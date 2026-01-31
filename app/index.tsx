@@ -7,6 +7,7 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ContentStore } from '@/data/ContentStore';
@@ -18,11 +19,11 @@ import { FilterBar } from '@/components/FilterBar';
 import { ChessBoard } from '@/components/ChessBoard';
 import { IconSymbol } from '@/components/IconSymbol';
 
-type ViewMode = 'library' | 'play';
+type ViewState = 'library' | 'play';
 
-export default function HomeScreen() {
-  const [viewMode, setViewMode] = useState<ViewMode>('library');
-  const [selectedPuzzle, setSelectedPuzzle] = useState<Puzzle | null>(null);
+export default function PocketPuzzlesApp() {
+  const [viewState, setViewState] = useState<ViewState>('library');
+  const [selectedPuzzleId, setSelectedPuzzleId] = useState<string | null>(null);
   const [filters, setFilters] = useState<Filters>({});
 
   const { getProgress, loading: progressLoading } = usePuzzleProgress();
@@ -30,31 +31,59 @@ export default function HomeScreen() {
 
   // Get filtered puzzles
   const puzzles = useMemo(() => {
-    console.log('HomeScreen: Applying filters to puzzle list');
+    console.log('PocketPuzzlesApp: Applying filters to puzzle list');
     return ContentStore.applyFilters(filters);
   }, [filters]);
 
+  // Get selected puzzle
+  const selectedPuzzle = useMemo(() => {
+    if (!selectedPuzzleId) return null;
+    return ContentStore.getPuzzleById(selectedPuzzleId);
+  }, [selectedPuzzleId]);
+
   const handlePlayPuzzle = async (puzzle: Puzzle) => {
-    console.log('HomeScreen: User selected puzzle:', puzzle.id);
-    setSelectedPuzzle(puzzle);
-    setViewMode('play');
+    console.log('PocketPuzzlesApp: User selected puzzle:', puzzle.id);
+    setSelectedPuzzleId(puzzle.id);
+    setViewState('play');
     await setLastPlayedPuzzle(puzzle.id);
   };
 
   const handleBackToLibrary = () => {
-    console.log('HomeScreen: Returning to library');
-    setViewMode('library');
-    setSelectedPuzzle(null);
+    console.log('PocketPuzzlesApp: Returning to library');
+    setViewState('library');
+    setSelectedPuzzleId(null);
   };
 
   const handleRestart = () => {
-    console.log('HomeScreen: Restarting puzzle');
+    console.log('PocketPuzzlesApp: Restarting puzzle');
     // TODO: Implement puzzle restart logic
   };
 
   const handleUndo = () => {
-    console.log('HomeScreen: Undo move');
+    console.log('PocketPuzzlesApp: Undo move');
     // TODO: Implement undo logic
+  };
+
+  // Helper to format objective text
+  const formatObjective = (puzzle: Puzzle): string => {
+    const depthText = puzzle.objective.depth;
+    switch (puzzle.objective.type) {
+      case 'mate':
+        return `Mate in ${depthText}`;
+      case 'win':
+        return `Win in ${depthText}`;
+      case 'promote':
+        return `Promote in ${depthText}`;
+      case 'stalemate':
+        return `Stalemate in ${depthText}`;
+      default:
+        return `Objective: ${puzzle.objective.type}`;
+    }
+  };
+
+  // Helper to format side to move
+  const formatSideToMove = (turn: 'w' | 'b'): string => {
+    return turn === 'w' ? 'White' : 'Black';
   };
 
   if (progressLoading) {
@@ -67,13 +96,13 @@ export default function HomeScreen() {
   }
 
   // Library View
-  if (viewMode === 'library') {
+  if (viewState === 'library') {
     const puzzleCount = puzzles.length;
     const puzzleCountText = `${puzzleCount} puzzle${puzzleCount !== 1 ? 's' : ''}`;
 
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={styles.header}>
+        <View style={[styles.header, Platform.OS === 'android' && { paddingTop: 48 }]}>
           <Text style={styles.headerTitle}>Pocket Puzzles</Text>
           <Text style={styles.headerSubtitle}>Sharpen your chess tactics</Text>
         </View>
@@ -111,13 +140,14 @@ export default function HomeScreen() {
   }
 
   // Play View
-  if (viewMode === 'play' && selectedPuzzle) {
-    const turnText = selectedPuzzle.turn;
-    const objectiveText = selectedPuzzle.objective.description;
+  if (viewState === 'play' && selectedPuzzle) {
+    const sideToMoveText = formatSideToMove(selectedPuzzle.turn);
+    const objectiveText = formatObjective(selectedPuzzle);
+    const noteText = selectedPuzzle.objective.note || '';
 
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={styles.playHeader}>
+        <View style={[styles.playHeader, Platform.OS === 'android' && { paddingTop: 48 }]}>
           <TouchableOpacity style={styles.backButton} onPress={handleBackToLibrary}>
             <IconSymbol
               ios_icon_name="chevron.left"
@@ -136,11 +166,17 @@ export default function HomeScreen() {
 
         <ScrollView style={styles.playScrollView} contentContainerStyle={styles.playScrollContent}>
           <View style={styles.objectiveCard}>
-            <View style={styles.objectiveHeader}>
-              <Text style={styles.objectiveLabel}>To Move:</Text>
-              <Text style={styles.objectiveValue}>{turnText}</Text>
+            <View style={styles.objectiveRow}>
+              <Text style={styles.objectiveLabel}>Side to move:</Text>
+              <Text style={styles.objectiveValue}>{sideToMoveText}</Text>
             </View>
-            <Text style={styles.objectiveDescription}>{objectiveText}</Text>
+            <View style={styles.objectiveRow}>
+              <Text style={styles.objectiveLabel}>Objective:</Text>
+              <Text style={styles.objectiveValue}>{objectiveText}</Text>
+            </View>
+            {noteText ? (
+              <Text style={styles.objectiveNote}>{noteText}</Text>
+            ) : null}
           </View>
 
           <View style={styles.boardContainer}>
@@ -228,7 +264,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 16,
-    paddingBottom: 100,
+    paddingBottom: 40,
   },
   emptyState: {
     alignItems: 'center',
@@ -280,7 +316,7 @@ const styles = StyleSheet.create({
   playScrollContent: {
     paddingHorizontal: 16,
     paddingVertical: 20,
-    paddingBottom: 100,
+    paddingBottom: 40,
   },
   objectiveCard: {
     backgroundColor: '#1e293b',
@@ -290,7 +326,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#334155',
   },
-  objectiveHeader: {
+  objectiveRow: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 8,
@@ -305,10 +341,11 @@ const styles = StyleSheet.create({
     color: '#f1f5f9',
     fontWeight: '700',
   },
-  objectiveDescription: {
-    fontSize: 16,
+  objectiveNote: {
+    fontSize: 14,
     color: '#e2e8f0',
     fontStyle: 'italic',
+    marginTop: 4,
   },
   boardContainer: {
     alignItems: 'center',

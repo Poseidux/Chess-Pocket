@@ -20,10 +20,6 @@ import { WidgetProvider } from "@/contexts/WidgetContext";
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
 
-export const unstable_settings = {
-  initialRouteName: "(tabs)", // Ensure any route can link back to `/`
-};
-
 export default function RootLayout() {
   const colorScheme = useColorScheme();
   const networkState = useNetworkState();
@@ -85,9 +81,9 @@ export default function RootLayout() {
         >
           <WidgetProvider>
             <GestureHandlerRootView>
-            <Stack>
-              {/* Main app with tabs */}
-              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack screenOptions={{ headerShown: false }}>
+              {/* Single screen app - no tabs */}
+              <Stack.Screen name="index" />
             </Stack>
             <SystemBars style={"auto"} />
             </GestureHandlerRootView>

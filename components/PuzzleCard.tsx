@@ -13,7 +13,26 @@ interface PuzzleCardProps {
 export function PuzzleCard({ puzzle, solved, onPress }: PuzzleCardProps) {
   const difficultyStars = '★'.repeat(puzzle.difficulty) + '☆'.repeat(5 - puzzle.difficulty);
   const sizeLabel = `${puzzle.size}×${puzzle.size}`;
-  const objectiveLabel = puzzle.objective.type;
+  
+  // Format objective nicely
+  const formatObjective = (): string => {
+    const depthText = puzzle.objective.depth;
+    switch (puzzle.objective.type) {
+      case 'mate':
+        return `Mate in ${depthText}`;
+      case 'win':
+        return `Win in ${depthText}`;
+      case 'promote':
+        return `Promote in ${depthText}`;
+      case 'stalemate':
+        return `Stalemate in ${depthText}`;
+      default:
+        return puzzle.objective.type;
+    }
+  };
+
+  const objectiveLabel = formatObjective();
+  const sideToMoveLabel = puzzle.turn === 'w' ? 'White' : 'Black';
 
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
@@ -50,7 +69,14 @@ export function PuzzleCard({ puzzle, solved, onPress }: PuzzleCardProps) {
         </View>
       </View>
 
-      <Text style={styles.description}>{puzzle.objective.description}</Text>
+      <View style={styles.descriptionRow}>
+        <Text style={styles.descriptionLabel}>Side to move:</Text>
+        <Text style={styles.descriptionValue}>{sideToMoveLabel}</Text>
+      </View>
+
+      {puzzle.objective.note && (
+        <Text style={styles.note}>{puzzle.objective.note}</Text>
+      )}
     </TouchableOpacity>
   );
 }
@@ -104,9 +130,25 @@ const styles = StyleSheet.create({
     color: '#cbd5e1',
     fontWeight: '600',
   },
-  description: {
-    fontSize: 14,
-    color: '#e2e8f0',
+  descriptionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  descriptionLabel: {
+    fontSize: 13,
+    color: '#64748b',
+    marginRight: 6,
+  },
+  descriptionValue: {
+    fontSize: 13,
+    color: '#cbd5e1',
+    fontWeight: '600',
+  },
+  note: {
+    fontSize: 13,
+    color: '#94a3b8',
     fontStyle: 'italic',
+    marginTop: 4,
   },
 });

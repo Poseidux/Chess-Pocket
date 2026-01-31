@@ -1,6 +1,6 @@
 
 import { BUILT_IN_PUZZLES } from './builtInPuzzles';
-import { Puzzle, Filters } from './types';
+import { Puzzle, Filters, ObjectiveType } from './types';
 
 /**
  * ContentStore - Facade for accessing puzzle data
@@ -42,29 +42,27 @@ export const ContentStore = {
   applyFilters: (filters: Filters): Puzzle[] => {
     console.log('ContentStore: Applying filters:', filters);
     return BUILT_IN_PUZZLES.filter(puzzle => {
-      let matches = true;
-
       // Filter by size
-      if (filters.size !== undefined && puzzle.size !== filters.size) {
-        matches = false;
+      if (filters.size && filters.size.length > 0 && !filters.size.includes(puzzle.size)) {
+        return false;
       }
 
       // Filter by difficulty
-      if (filters.difficulty !== undefined && puzzle.difficulty !== filters.difficulty) {
-        matches = false;
+      if (filters.difficulty && filters.difficulty.length > 0 && !filters.difficulty.includes(puzzle.difficulty)) {
+        return false;
       }
 
       // Filter by objective type
-      if (filters.objectiveType !== undefined && puzzle.objective.type !== filters.objectiveType) {
-        matches = false;
+      if (filters.objectiveType && filters.objectiveType.length > 0 && !filters.objectiveType.includes(puzzle.objective.type)) {
+        return false;
       }
 
       // Filter by pack
-      if (filters.pack !== undefined && puzzle.pack !== filters.pack) {
-        matches = false;
+      if (filters.pack && filters.pack.length > 0 && !filters.pack.includes(puzzle.pack)) {
+        return false;
       }
 
-      return matches;
+      return true;
     });
   },
 
@@ -80,9 +78,10 @@ export const ContentStore = {
   /**
    * Get all unique objective types
    */
-  getAllObjectiveTypes: (): string[] => {
+  getAllObjectiveTypes: (): ObjectiveType[] => {
     console.log('ContentStore: Fetching all objective types');
-    const types = new Set(BUILT_IN_PUZZLES.map(p => p.objective.type));
+    const types = new Set<ObjectiveType>();
+    BUILT_IN_PUZZLES.forEach(p => types.add(p.objective.type));
     return Array.from(types).sort();
   },
 };

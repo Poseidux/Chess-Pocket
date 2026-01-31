@@ -1,34 +1,24 @@
 
 import React from 'react';
 import { View, Text, StyleSheet, Dimensions } from 'react-native';
-import { Piece } from '@/data/types';
+import { Piece, PieceType, PieceColor } from '@/data/types';
 
 interface ChessBoardProps {
   size: 4 | 5 | 6 | 8;
   pieces: Piece[];
 }
 
-// Helper to convert square notation (e.g., "a1") to row/col indices
-function squareToIndices(square: string, boardSize: number): { row: number; col: number } {
-  const file = square.charCodeAt(0) - 'a'.charCodeAt(0); // a=0, b=1, etc.
-  const rank = parseInt(square[1], 10) - 1; // 1=0, 2=1, etc.
-  return {
-    row: boardSize - 1 - rank, // Flip vertically (rank 1 at bottom)
-    col: file,
-  };
-}
-
 // Helper to get piece symbol
-function getPieceSymbol(piece: Piece): string {
-  const symbols: Record<string, { White: string; Black: string }> = {
-    King: { White: '♔', Black: '♚' },
-    Queen: { White: '♕', Black: '♛' },
-    Rook: { White: '♖', Black: '♜' },
-    Bishop: { White: '♗', Black: '♝' },
-    Knight: { White: '♘', Black: '♞' },
-    Pawn: { White: '♙', Black: '♟' },
+function getPieceSymbol(type: PieceType, color: PieceColor): string {
+  const symbols: Record<PieceType, { w: string; b: string }> = {
+    K: { w: '♔', b: '♚' },
+    Q: { w: '♕', b: '♛' },
+    R: { w: '♖', b: '♜' },
+    B: { w: '♗', b: '♝' },
+    N: { w: '♘', b: '♞' },
+    P: { w: '♙', b: '♟' },
   };
-  return symbols[piece.type][piece.color];
+  return symbols[type][color];
 }
 
 export function ChessBoard({ size, pieces }: ChessBoardProps) {
@@ -43,9 +33,12 @@ export function ChessBoard({ size, pieces }: ChessBoardProps) {
     .map(() => Array(size).fill(null));
 
   pieces.forEach(piece => {
-    const indices = squareToIndices(piece.position, size);
-    if (indices.row >= 0 && indices.row < size && indices.col >= 0 && indices.col < size) {
-      grid[indices.row][indices.col] = piece;
+    // Flip y coordinate for display (y=0 at bottom in chess, but top in UI)
+    const displayRow = size - 1 - piece.y;
+    const displayCol = piece.x;
+    
+    if (displayRow >= 0 && displayRow < size && displayCol >= 0 && displayCol < size) {
+      grid[displayRow][displayCol] = piece;
     }
   });
 
@@ -56,7 +49,7 @@ export function ChessBoard({ size, pieces }: ChessBoardProps) {
           {row.map((piece, colIndex) => {
             const isLight = (rowIndex + colIndex) % 2 === 0;
             const squareColor = isLight ? '#f0d9b5' : '#b58863';
-            const pieceSymbol = piece ? getPieceSymbol(piece) : '';
+            const pieceSymbol = piece ? getPieceSymbol(piece.type, piece.color) : '';
 
             return (
               <View

@@ -1,56 +1,54 @@
 
 // Core chess piece types
-export type PieceType = 'Pawn' | 'Knight' | 'Bishop' | 'Rook' | 'Queen' | 'King';
-export type PieceColor = 'White' | 'Black';
-export type Square = string; // e.g., "a1", "h8", "d4"
+export type PieceType = 'K' | 'Q' | 'R' | 'B' | 'N' | 'P';
+export type PieceColor = 'w' | 'b';
+export type Turn = 'w' | 'b';
+export type PuzzleSize = 4 | 5 | 6 | 8;
+export type Difficulty = 1 | 2 | 3 | 4 | 5;
+export type ObjectiveType = 'mate' | 'win' | 'promote' | 'stalemate';
 
 // Piece on the board
 export interface Piece {
-  id: string;
   type: PieceType;
   color: PieceColor;
-  position: Square;
+  x: number;
+  y: number;
 }
-
-// Objective types for puzzles
-export type ObjectiveType = 'Checkmate' | 'WinMaterial' | 'Draw' | 'Stalemate' | 'Promotion' | 'Defense';
-
-// Turn indicator
-export type Turn = 'White' | 'Black';
 
 // Objective definition
 export interface Objective {
   type: ObjectiveType;
-  description: string; // e.g., "White to move and checkmate in 2"
-  targetMaterial?: { type: PieceType; color: PieceColor; count: number }[]; // For WinMaterial objectives
+  depth: number; // e.g., mate in 2, win in 1
+  note?: string;
 }
 
-// A single move in the solution
+// A single move in the solution line
 export interface LineMove {
-  from: Square;
-  to: Square;
-  promotion?: PieceType; // e.g., 'Queen' if a pawn promotes
+  side: Turn;
+  from: [number, number];
+  to: [number, number];
+  promo?: 'Q' | 'R' | 'B' | 'N'; // Promotion piece type
 }
 
 // Complete puzzle definition
 export interface Puzzle {
   id: string;
+  pack: string;
   title: string;
-  pack: string; // e.g., "Beginner Tactics", "Endgame Mastery"
-  size: 4 | 5 | 6 | 8; // Board size N x N
-  difficulty: 1 | 2 | 3 | 4 | 5;
-  objective: Objective;
+  size: PuzzleSize;
+  difficulty: Difficulty;
+  turn: Turn; // Side to move first
   pieces: Piece[];
-  turn: Turn; // Who is to move first
-  solution: LineMove[][]; // Array of possible solution lines, each line is an array of moves
+  objective: Objective;
+  line: LineMove[]; // Flat array of moves for the solution
 }
 
 // Filter options for puzzle library
 export interface Filters {
-  size?: 4 | 5 | 6 | 8;
-  objectiveType?: ObjectiveType;
-  difficulty?: 1 | 2 | 3 | 4 | 5;
-  pack?: string;
+  size?: PuzzleSize[];
+  difficulty?: Difficulty[];
+  objectiveType?: ObjectiveType[];
+  pack?: string[];
 }
 
 // User progress tracking (stored in AsyncStorage)
