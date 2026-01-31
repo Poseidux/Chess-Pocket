@@ -30,6 +30,7 @@ import {
   getKingSquare,
   needsPromotion,
 } from '@/utils/chessLogic';
+import { eq } from '@/utils/coords';
 import { validateAllPuzzles, ValidationReport } from '@/utils/puzzleValidator';
 import { BUILT_IN_PUZZLES } from '@/data/builtInPuzzles';
 

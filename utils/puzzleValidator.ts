@@ -9,6 +9,7 @@ import {
   runChessLogicSelfTest,
   Square,
 } from './chessLogic';
+import { eq } from './coords';
 
 export interface ValidationResult {
   puzzleId: string;
@@ -28,6 +29,7 @@ export interface ValidationReport {
 
 /**
  * Validates a single puzzle for correctness
+ * Uses standardized [x,y] coordinates throughout
  */
 export function validatePuzzle(puzzle: Puzzle): ValidationResult {
   const errors: string[] = [];
@@ -67,7 +69,7 @@ export function validatePuzzle(puzzle: Puzzle): ValidationResult {
       break;
     }
 
-    // Verify piece exists at from square
+    // Verify piece exists at from square using [x,y] lookup
     const piece = getPieceAt(currentPieces, move.from);
     if (!piece) {
       errors.push(
@@ -86,7 +88,7 @@ export function validatePuzzle(puzzle: Puzzle): ValidationResult {
       break;
     }
 
-    // Get legal moves for this piece
+    // Get legal moves for this piece using [x,y] coordinates
     const legalMoves = getLegalMovesForPiece(
       currentPieces,
       move.from,
@@ -97,10 +99,8 @@ export function validatePuzzle(puzzle: Puzzle): ValidationResult {
     // Store legal moves for debugging
     failingMoveLegalMoves = legalMoves;
 
-    // Verify the move is legal
-    const isLegal = legalMoves.some(
-      m => m[0] === move.to[0] && m[1] === move.to[1]
-    );
+    // Verify the move is legal using eq helper
+    const isLegal = legalMoves.some(m => eq(m, move.to));
 
     if (!isLegal) {
       errors.push(
@@ -129,7 +129,7 @@ export function validatePuzzle(puzzle: Puzzle): ValidationResult {
       }
     }
 
-    // Execute the move using the standardized applyMove
+    // Execute the move using standardized makeMove
     currentPieces = makeMove(currentPieces, move.from, move.to, move.promo);
     currentTurn = currentTurn === 'w' ? 'b' : 'w';
     
@@ -226,7 +226,7 @@ export function validateAllPuzzles(puzzles: Puzzle[]): ValidationReport {
         );
         if (result.failingMoveLegalMoves) {
           console.error(
-            `  Legal moves for that position: ${JSON.stringify(result.failingMoveLegalMoves)}`
+            `  Legal moves from from-square: ${JSON.stringify(result.failingMoveLegalMoves)}`
           );
         }
       }

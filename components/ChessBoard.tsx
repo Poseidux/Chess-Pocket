@@ -4,6 +4,7 @@ import { View, StyleSheet, Dimensions, TouchableOpacity } from 'react-native';
 import { Piece } from '@/data/types';
 import { Square } from '@/utils/chessLogic';
 import { PieceIcon } from './PieceIcon';
+import { eq } from '@/utils/coords';
 
 interface ChessBoardProps {
   size: 4 | 5 | 6 | 8;
@@ -30,6 +31,9 @@ export function ChessBoard({
   const squareSize = boardWidth / size;
 
   // Create a 2D grid to place pieces
+  // Grid is indexed as grid[displayRow][displayCol]
+  // displayRow = size - 1 - y (flip y for display)
+  // displayCol = x
   const grid: (Piece | null)[][] = Array(size)
     .fill(null)
     .map(() => Array(size).fill(null));
@@ -45,40 +49,42 @@ export function ChessBoard({
   });
 
   // Helper to check if a square is highlighted
+  // Convert display coordinates (row, col) back to logical [x, y]
   const isSquareSelected = (row: number, col: number): boolean => {
     if (!selectedSquare) return false;
     const chessY = size - 1 - row;
     const chessX = col;
-    return selectedSquare[0] === chessX && selectedSquare[1] === chessY;
+    return eq(selectedSquare, [chessX, chessY]);
   };
 
   const isSquareLegalMove = (row: number, col: number): boolean => {
     const chessY = size - 1 - row;
     const chessX = col;
-    return legalMoves.some(m => m[0] === chessX && m[1] === chessY);
+    return legalMoves.some(m => eq(m, [chessX, chessY]));
   };
 
   const isSquareLastMoveFrom = (row: number, col: number): boolean => {
     if (!lastMove) return false;
     const chessY = size - 1 - row;
     const chessX = col;
-    return lastMove.from[0] === chessX && lastMove.from[1] === chessY;
+    return eq(lastMove.from, [chessX, chessY]);
   };
 
   const isSquareLastMoveTo = (row: number, col: number): boolean => {
     if (!lastMove) return false;
     const chessY = size - 1 - row;
     const chessX = col;
-    return lastMove.to[0] === chessX && lastMove.to[1] === chessY;
+    return eq(lastMove.to, [chessX, chessY]);
   };
 
   const isSquareCheckedKing = (row: number, col: number): boolean => {
     if (!checkedKingSquare) return false;
     const chessY = size - 1 - row;
     const chessX = col;
-    return checkedKingSquare[0] === chessX && checkedKingSquare[1] === chessY;
+    return eq(checkedKingSquare, [chessX, chessY]);
   };
 
+  // Convert display tap to logical [x, y] coordinates
   const handleSquarePress = (row: number, col: number) => {
     const chessY = size - 1 - row;
     const chessX = col;

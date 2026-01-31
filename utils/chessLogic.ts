@@ -1,13 +1,16 @@
 
 import { Piece, PieceType, PieceColor, Turn } from '@/data/types';
+import { isOnBoard, key, eq, Coord } from './coords';
 
-export type Square = [number, number]; // [x, y] where x=column, y=row
+export type Square = Coord; // [x, y] where x=column, y=row
 
 /**
  * Get piece at a specific square [x, y]
+ * Uses pieces.find(p => p.x===x && p.y===y)
  */
 export function getPieceAt(pieces: Piece[], square: Square): Piece | undefined {
-  return pieces.find(p => p.x === square[0] && p.y === square[1]);
+  const [x, y] = square;
+  return pieces.find(p => p.x === x && p.y === y);
 }
 
 /**
@@ -15,11 +18,12 @@ export function getPieceAt(pieces: Piece[], square: Square): Piece | undefined {
  */
 export function isValidSquare(square: Square, boardSize: number): boolean {
   const [x, y] = square;
-  return x >= 0 && x < boardSize && y >= 0 && y < boardSize;
+  return isOnBoard(x, y, boardSize);
 }
 
 /**
  * Check if a square is attacked by a specific color
+ * Uses [x,y] consistently for square lookups
  */
 export function isSquareAttacked(
   pieces: Piece[],
@@ -27,11 +31,12 @@ export function isSquareAttacked(
   attackerColor: PieceColor,
   boardSize: number
 ): boolean {
+  const [targetX, targetY] = square;
   const attackers = pieces.filter(p => p.color === attackerColor);
   
   for (const attacker of attackers) {
     const moves = getLegalMovesForPiece(pieces, [attacker.x, attacker.y], boardSize, false);
-    if (moves.some(m => m[0] === square[0] && m[1] === square[1])) {
+    if (moves.some(m => eq(m, [targetX, targetY]))) {
       return true;
     }
   }
@@ -102,7 +107,7 @@ export function getLegalMovesForPiece(
 
 /**
  * King moves: 1 step in any direction
- * Horizontal moves change x, vertical moves change y
+ * Horizontal moves change x, vertical moves change y, diagonals change both
  */
 function getKingMoves(pieces: Piece[], from: Square, boardSize: number): Square[] {
   const [x, y] = from;
@@ -140,8 +145,8 @@ function getQueenMoves(pieces: Piece[], from: Square, boardSize: number): Square
 
 /**
  * Rook moves: sliding horizontally and vertically
- * Horizontal: dx changes, dy=0
- * Vertical: dx=0, dy changes
+ * Horizontal: dx changes, dy=0 (x changes)
+ * Vertical: dx=0, dy changes (y changes)
  */
 function getRookMoves(pieces: Piece[], from: Square, boardSize: number): Square[] {
   const directions = [[0, 1], [0, -1], [1, 0], [-1, 0]];
@@ -150,7 +155,7 @@ function getRookMoves(pieces: Piece[], from: Square, boardSize: number): Square[
 
 /**
  * Bishop moves: sliding diagonally
- * Diagonals: both dx and dy change
+ * Diagonals: both dx and dy change (both x and y change)
  */
 function getBishopMoves(pieces: Piece[], from: Square, boardSize: number): Square[] {
   const directions = [[1, 1], [1, -1], [-1, 1], [-1, -1]];
@@ -177,7 +182,7 @@ function getSlidingMoves(
     let nx = x + dx;
     let ny = y + dy;
     
-    while (isValidSquare([nx, ny], boardSize)) {
+    while (isOnBoard(nx, ny, boardSize)) {
       const targetPiece = getPieceAt(pieces, [nx, ny]);
       
       if (!targetPiece) {
@@ -227,8 +232,9 @@ function getKnightMoves(pieces: Piece[], from: Square, boardSize: number): Squar
 
 /**
  * Pawn moves: forward 1, diagonal capture, optional 2-step from starting rank
- * White pawns: y+1 (forward)
- * Black pawns: y-1 (forward)
+ * White pawns: y+1 (forward, vertical changes y)
+ * Black pawns: y-1 (forward, vertical changes y)
+ * Starting ranks: white y==1, black y==size-2
  */
 function getPawnMoves(pieces: Piece[], from: Square, boardSize: number): Square[] {
   const [x, y] = from;
@@ -278,12 +284,14 @@ export function makeMove(
   to: Square,
   promo?: PieceType
 ): Piece[] {
+  const [fromX, fromY] = from;
+  const [toX, toY] = to;
   const piece = getPieceAt(pieces, from);
   if (!piece) return pieces;
   
-  // Remove captured piece and moving piece
+  // Remove captured piece and moving piece using [x,y] lookups
   let newPieces = pieces.filter(
-    p => !(p.x === to[0] && p.y === to[1]) && !(p.x === from[0] && p.y === from[1])
+    p => !(p.x === toX && p.y === toY) && !(p.x === fromX && p.y === fromY)
   );
   
   // Determine final piece type (handle promotion)
@@ -296,8 +304,8 @@ export function makeMove(
   newPieces.push({
     ...piece,
     type: finalType,
-    x: to[0],
-    y: to[1],
+    x: toX,
+    y: toY,
   });
   
   return newPieces;
@@ -351,6 +359,8 @@ export function isCheckmate(
  * King at [3,3] should have 8 legal moves including [2,3] and [3,2]
  */
 export function runChessLogicSelfTest(): { passed: boolean; message: string } {
+  console.log('ChessLogic: Running self-test...');
+  
   const size = 8;
   const whiteKing: Piece = { type: 'K', color: 'w', x: 3, y: 3 };
   const pieces: Piece[] = [whiteKing];
@@ -365,36 +375,32 @@ export function runChessLogicSelfTest(): { passed: boolean; message: string } {
   ];
   
   if (legalMoves.length !== 8) {
-    return {
-      passed: false,
-      message: `King self-test FAILED: Expected 8 moves, got ${legalMoves.length}. Moves: ${JSON.stringify(legalMoves)}`,
-    };
+    const message = `King self-test FAILED: Expected 8 moves, got ${legalMoves.length}. Moves: ${JSON.stringify(legalMoves)}`;
+    console.error(message);
+    return { passed: false, message };
   }
   
-  // Check for specific required moves
-  const has_2_3 = legalMoves.some(m => m[0] === 2 && m[1] === 3);
-  const has_3_2 = legalMoves.some(m => m[0] === 3 && m[1] === 2);
+  // Check for specific required moves [2,3] and [3,2]
+  const has_2_3 = legalMoves.some(m => eq(m, [2, 3]));
+  const has_3_2 = legalMoves.some(m => eq(m, [3, 2]));
   
   if (!has_2_3 || !has_3_2) {
-    return {
-      passed: false,
-      message: `King self-test FAILED: Missing required moves [2,3] or [3,2]. Moves: ${JSON.stringify(legalMoves)}`,
-    };
+    const message = `King self-test FAILED: Missing required moves [2,3] or [3,2]. Moves: ${JSON.stringify(legalMoves)}`;
+    console.error(message);
+    return { passed: false, message };
   }
   
   // Verify all expected moves are present
   for (const expected of expectedMoves) {
-    const found = legalMoves.some(m => m[0] === expected[0] && m[1] === expected[1]);
+    const found = legalMoves.some(m => eq(m, expected));
     if (!found) {
-      return {
-        passed: false,
-        message: `King self-test FAILED: Missing expected move [${expected[0]},${expected[1]}]. Moves: ${JSON.stringify(legalMoves)}`,
-      };
+      const message = `King self-test FAILED: Missing expected move [${expected[0]},${expected[1]}]. Moves: ${JSON.stringify(legalMoves)}`;
+      console.error(message);
+      return { passed: false, message };
     }
   }
   
-  return {
-    passed: true,
-    message: 'King self-test PASSED: All 8 moves correct including [2,3] and [3,2]',
-  };
+  const message = 'King self-test PASSED: All 8 moves correct including [2,3] and [3,2]';
+  console.log(message);
+  return { passed: true, message };
 }
