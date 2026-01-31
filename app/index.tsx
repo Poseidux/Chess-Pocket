@@ -1,631 +1,214 @@
 
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  ActivityIndicator,
-  Platform,
-  Modal,
-  Animated,
+  useColorScheme,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import * as Haptics from 'expo-haptics';
-import { ContentStore } from '@/data/ContentStore';
-import { Puzzle, Filters, Piece, Turn, LineMove } from '@/data/types';
-import { usePuzzleProgress } from '@/hooks/usePuzzleProgress';
-import { useAppSettings } from '@/hooks/useAppSettings';
-import { PuzzleCard } from '@/components/PuzzleCard';
-import { FilterBar } from '@/components/FilterBar';
-import { ChessBoard } from '@/components/ChessBoard';
-import { IconSymbol } from '@/components/IconSymbol';
-import {
-  Square,
-  getPieceAt,
-  getLegalMovesForPiece,
-  makeMove,
-  isKingInCheck,
-  getKingSquare,
-  needsPromotion,
-} from '@/utils/chessLogic';
-import { eq } from '@/utils/coords';
-import { validateAllPuzzles, ValidationReport } from '@/utils/puzzleValidator';
 import { BUILT_IN_PUZZLES } from '@/data/builtInPuzzles';
+import { Puzzle, Piece } from '@/data/types';
+import { PieceIcon3D } from '@/components/PieceIcon';
+import { useAppSettings } from '@/hooks/useAppSettings';
+import * as Haptics from 'expo-haptics';
 
-type ViewState = 'library' | 'play' | 'debug';
-
-interface GameState {
-  pieces: Piece[];
-  turn: Turn;
-  selectedSquare: Square | null;
-  legalMoves: Square[];
-  lastMove: { from: Square; to: Square } | null;
-  lineIndex: number;
-  isSolved: boolean;
-  history: HistoryEntry[];
-}
-
-interface HistoryEntry {
-  pieces: Piece[];
-  turn: Turn;
-  lastMove: { from: Square; to: Square } | null;
-  lineIndex: number;
-}
+type ViewState = 'library' | 'play';
 
 export default function PocketPuzzlesApp() {
+  const colorScheme = useColorScheme();
+  const { settings, effectiveTheme } = useAppSettings();
+  
   const [viewState, setViewState] = useState<ViewState>('library');
-  const [selectedPuzzleId, setSelectedPuzzleId] = useState<string | null>(null);
-  const [filters, setFilters] = useState<Filters>({});
-  const [validationReport, setValidationReport] = useState<ValidationReport | null>(null);
+  const [selectedPuzzle, setSelectedPuzzle] = useState<Puzzle | null>(null);
+  const [sizeFilter, setSizeFilter] = useState<(5 | 6 | 7 | 8)[]>([]);
+  const [difficultyFilter, setDifficultyFilter] = useState<(1 | 2 | 3 | 4 | 5)[]>([]);
 
-  // Game state
-  const [gameState, setGameState] = useState<GameState | null>(null);
-  const [showSolvedModal, setShowSolvedModal] = useState(false);
-  const [showPromotionModal, setShowPromotionModal] = useState(false);
-  const [pendingPromotion, setPendingPromotion] = useState<{
-    from: Square;
-    to: Square;
-  } | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
-  // Animation for board shake
-  const shakeAnimation = useRef(new Animated.Value(0)).current;
-
-  const { getProgress, markSolved, incrementAttempts, loading: progressLoading } = usePuzzleProgress();
-  const { settings, setLastPlayedPuzzle } = useAppSettings();
-
-  // Run validator in dev mode on app start
-  useEffect(() => {
-    if (__DEV__) {
-      console.log('PocketPuzzlesApp: Running puzzle validator in dev mode');
-      const report = validateAllPuzzles(BUILT_IN_PUZZLES);
-      setValidationReport(report);
-
-      if (report.failedPuzzles.length > 0) {
-        console.error(
-          `PocketPuzzlesApp: ${report.failedPuzzles.length} puzzle(s) failed validation. Check Debug panel for details.`
-        );
-      } else {
-        console.log('PocketPuzzlesApp: All puzzles passed validation ✓');
-      }
-    }
-  }, []);
-
-  // Get filtered puzzles
-  const puzzles = useMemo(() => {
-    console.log('PocketPuzzlesApp: Applying filters to puzzle list');
-    return ContentStore.applyFilters(filters);
-  }, [filters]);
-
-  // Get selected puzzle
-  const selectedPuzzle = useMemo(() => {
-    if (!selectedPuzzleId) return null;
-    return ContentStore.getPuzzleById(selectedPuzzleId);
-  }, [selectedPuzzleId]);
-
-  // Initialize game state when puzzle is selected
-  useEffect(() => {
-    if (selectedPuzzle && viewState === 'play') {
-      console.log('PocketPuzzlesApp: Initializing game state for puzzle:', selectedPuzzle.id);
-      initializeGameState(selectedPuzzle);
-    }
-  }, [selectedPuzzle, viewState]);
-
-  const initializeGameState = (puzzle: Puzzle) => {
-    setGameState({
-      pieces: JSON.parse(JSON.stringify(puzzle.pieces)),
-      turn: puzzle.turn,
-      selectedSquare: null,
-      legalMoves: [],
-      lastMove: null,
-      lineIndex: 0,
-      isSolved: false,
-      history: [],
-    });
-    setShowSolvedModal(false);
-    setErrorMessage(null);
+  const isDark = effectiveTheme === 'dark';
+  const colors = {
+    background: isDark ? '#0f172a' : '#f8fafc',
+    card: isDark ? '#1e293b' : '#ffffff',
+    text: isDark ? '#f1f5f9' : '#0f172a',
+    textSecondary: isDark ? '#94a3b8' : '#64748b',
+    border: isDark ? '#334155' : '#e2e8f0',
+    primary: '#3b82f6',
+    success: '#10b981',
+    lightSquare: isDark ? '#cbd5e1' : '#f1f5f9',
+    darkSquare: isDark ? '#64748b' : '#94a3b8',
   };
 
-  const handlePlayPuzzle = async (puzzle: Puzzle) => {
-    console.log('PocketPuzzlesApp: User selected puzzle:', puzzle.id);
-    setSelectedPuzzleId(puzzle.id);
+  const triggerHaptic = () => {
+    if (settings.hapticsEnabled) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+  };
+
+  const handlePlayPuzzle = (puzzle: Puzzle) => {
+    console.log('User selected puzzle:', puzzle.id);
+    setSelectedPuzzle(puzzle);
     setViewState('play');
-    await setLastPlayedPuzzle(puzzle.id);
+    triggerHaptic();
   };
 
   const handleBackToLibrary = () => {
-    console.log('PocketPuzzlesApp: Returning to library');
+    console.log('Returning to library');
     setViewState('library');
-    setSelectedPuzzleId(null);
-    setGameState(null);
+    setSelectedPuzzle(null);
+    triggerHaptic();
   };
 
-  const handleRestart = async () => {
-    console.log('PocketPuzzlesApp: Restarting puzzle');
-    if (selectedPuzzle) {
-      await incrementAttempts(selectedPuzzle.id);
-      initializeGameState(selectedPuzzle);
-      triggerHaptic('light');
-    }
-  };
-
-  const handleUndo = () => {
-    console.log('PocketPuzzlesApp: Undo move');
-    if (!gameState || gameState.history.length === 0) {
-      console.log('PocketPuzzlesApp: No history to undo');
-      return;
-    }
-
-    const lastEntry = gameState.history[gameState.history.length - 1];
-    setGameState({
-      ...lastEntry,
-      history: gameState.history.slice(0, -1),
-      selectedSquare: null,
-      legalMoves: [],
-      isSolved: false,
-    });
-    setShowSolvedModal(false);
-    setErrorMessage(null);
-    triggerHaptic('light');
-  };
-
-  const handleSquarePress = (square: Square) => {
-    if (!gameState || !selectedPuzzle || gameState.isSolved) return;
-
-    console.log('PocketPuzzlesApp: Square pressed:', square);
-
-    const piece = getPieceAt(gameState.pieces, square[0], square[1]);
-
-    // If no piece is selected
-    if (!gameState.selectedSquare) {
-      // Select piece if it matches the side to move
-      if (piece && piece.color === gameState.turn) {
-        const legalMoves = getLegalMovesForPiece(
-          gameState.pieces,
-          square,
-          selectedPuzzle.size,
-          true
-        );
-        console.log('PocketPuzzlesApp: Selected piece, legal moves:', legalMoves.length);
-        setGameState({
-          ...gameState,
-          selectedSquare: square,
-          legalMoves,
-        });
-        triggerHaptic('light');
-      } else {
-        console.log('PocketPuzzlesApp: Cannot select piece (wrong color or no piece)');
-        triggerHaptic('error');
-      }
-      return;
-    }
-
-    // If a piece is already selected
-    const selectedPiece = getPieceAt(gameState.pieces, gameState.selectedSquare[0], gameState.selectedSquare[1]);
-    if (!selectedPiece) return;
-
-    // If clicking the same square, deselect
-    if (square[0] === gameState.selectedSquare[0] && square[1] === gameState.selectedSquare[1]) {
-      console.log('PocketPuzzlesApp: Deselecting piece');
-      setGameState({
-        ...gameState,
-        selectedSquare: null,
-        legalMoves: [],
-      });
-      return;
-    }
-
-    // If clicking another piece of the same color, select it instead
-    if (piece && piece.color === gameState.turn) {
-      const legalMoves = getLegalMovesForPiece(
-        gameState.pieces,
-        square,
-        selectedPuzzle.size,
-        true
-      );
-      console.log('PocketPuzzlesApp: Switched selection, legal moves:', legalMoves.length);
-      setGameState({
-        ...gameState,
-        selectedSquare: square,
-        legalMoves,
-      });
-      triggerHaptic('light');
-      return;
-    }
-
-    // Check if the move is legal
-    const isLegal = gameState.legalMoves.some(m => m[0] === square[0] && m[1] === square[1]);
-    if (!isLegal) {
-      console.log('PocketPuzzlesApp: Illegal move');
-      setErrorMessage('Illegal move');
-      shakeBoard();
-      triggerHaptic('error');
-      setTimeout(() => setErrorMessage(null), 1500);
-      return;
-    }
-
-    // Check if pawn needs promotion
-    const movedPiece = getPieceAt(gameState.pieces, gameState.selectedSquare[0], gameState.selectedSquare[1]);
-    if (movedPiece && movedPiece.type === 'P') {
-      const promotionRank = movedPiece.color === 'w' ? selectedPuzzle.size - 1 : 0;
-      if (square[1] === promotionRank) {
-        console.log('PocketPuzzlesApp: Pawn promotion required');
-        setPendingPromotion({ from: gameState.selectedSquare, to: square });
-        setShowPromotionModal(true);
-        return;
-      }
-    }
-
-    // Execute the move
-    executeMove(gameState.selectedSquare, square);
-  };
-
-  const executeMove = (from: Square, to: Square, promo?: 'Q' | 'R' | 'B' | 'N') => {
-    if (!gameState || !selectedPuzzle) return;
-
-    console.log('PocketPuzzlesApp: Executing move from', from, 'to', to, 'promo:', promo);
-
-    // Check if move matches the puzzle line
-    const expectedMove = selectedPuzzle.line[gameState.lineIndex];
-    const moveMatches =
-      expectedMove &&
-      expectedMove.side === gameState.turn &&
-      expectedMove.from[0] === from[0] &&
-      expectedMove.from[1] === from[1] &&
-      expectedMove.to[0] === to[0] &&
-      expectedMove.to[1] === to[1] &&
-      (expectedMove.promo === promo || (!expectedMove.promo && !promo));
-
-    if (!moveMatches) {
-      console.log('PocketPuzzlesApp: Move does not match puzzle line');
-      setErrorMessage('Try again');
-      shakeBoard();
-      triggerHaptic('error');
-      setTimeout(() => setErrorMessage(null), 1500);
-
-      setGameState({
-        ...gameState,
-        selectedSquare: null,
-        legalMoves: [],
-      });
-      return;
-    }
-
-    // Move is correct - execute it
-    const newPieces = makeMove(gameState.pieces, from, to, promo);
-    const newTurn: Turn = gameState.turn === 'w' ? 'b' : 'w';
-    const newLineIndex = gameState.lineIndex + 1;
-
-    // Save to history
-    const newHistory: HistoryEntry[] = [
-      ...gameState.history,
-      {
-        pieces: gameState.pieces,
-        turn: gameState.turn,
-        lastMove: gameState.lastMove,
-        lineIndex: gameState.lineIndex,
-      },
-    ];
-
-    setGameState({
-      pieces: newPieces,
-      turn: newTurn,
-      selectedSquare: null,
-      legalMoves: [],
-      lastMove: { from, to },
-      lineIndex: newLineIndex,
-      isSolved: false,
-      history: newHistory,
-    });
-
-    triggerHaptic('light');
-    console.log('PocketPuzzlesApp: Move executed, new lineIndex:', newLineIndex);
-
-    // Check if puzzle is solved
-    if (newLineIndex >= selectedPuzzle.line.length) {
-      console.log('PocketPuzzlesApp: Puzzle solved!');
-      setTimeout(() => {
-        setGameState(prev => (prev ? { ...prev, isSolved: true } : null));
-        setShowSolvedModal(true);
-        markSolved(selectedPuzzle.id);
-        triggerHaptic('success');
-      }, 300);
-      return;
-    }
-
-    // Auto-play opponent move if next move is opponent's
-    const nextMove = selectedPuzzle.line[newLineIndex];
-    if (nextMove && nextMove.side !== gameState.turn) {
-      console.log('PocketPuzzlesApp: Auto-playing opponent move');
-      setTimeout(() => {
-        autoPlayMove(newPieces, newTurn, nextMove, newLineIndex, newHistory);
-      }, 300);
-    }
-  };
-
-  const autoPlayMove = (
-    pieces: Piece[],
-    turn: Turn,
-    move: LineMove,
-    lineIndex: number,
-    history: HistoryEntry[]
-  ) => {
-    if (!selectedPuzzle) return;
-
-    console.log('PocketPuzzlesApp: Auto-playing move:', move);
-
-    const newPieces = makeMove(pieces, move.from, move.to, move.promo);
-    const newTurn: Turn = turn === 'w' ? 'b' : 'w';
-    const newLineIndex = lineIndex + 1;
-
-    const newHistory: HistoryEntry[] = [
-      ...history,
-      {
-        pieces,
-        turn,
-        lastMove: { from: move.from, to: move.to },
-        lineIndex,
-      },
-    ];
-
-    setGameState({
-      pieces: newPieces,
-      turn: newTurn,
-      selectedSquare: null,
-      legalMoves: [],
-      lastMove: { from: move.from, to: move.to },
-      lineIndex: newLineIndex,
-      isSolved: false,
-      history: newHistory,
-    });
-
-    triggerHaptic('light');
-
-    // Check if puzzle is solved after auto-play
-    if (newLineIndex >= selectedPuzzle.line.length) {
-      console.log('PocketPuzzlesApp: Puzzle solved after auto-play!');
-      setTimeout(() => {
-        setGameState(prev => (prev ? { ...prev, isSolved: true } : null));
-        setShowSolvedModal(true);
-        markSolved(selectedPuzzle.id);
-        triggerHaptic('success');
-      }, 300);
-    }
-  };
-
-  const handlePromotion = (promoType: 'Q' | 'R' | 'B' | 'N') => {
-    console.log('PocketPuzzlesApp: Promotion selected:', promoType);
-    setShowPromotionModal(false);
-    if (pendingPromotion) {
-      executeMove(pendingPromotion.from, pendingPromotion.to, promoType);
-      setPendingPromotion(null);
-    }
-  };
-
-  const shakeBoard = () => {
-    Animated.sequence([
-      Animated.timing(shakeAnimation, { toValue: 10, duration: 50, useNativeDriver: true }),
-      Animated.timing(shakeAnimation, { toValue: -10, duration: 50, useNativeDriver: true }),
-      Animated.timing(shakeAnimation, { toValue: 10, duration: 50, useNativeDriver: true }),
-      Animated.timing(shakeAnimation, { toValue: 0, duration: 50, useNativeDriver: true }),
-    ]).start();
-  };
-
-  const triggerHaptic = (type: 'light' | 'error' | 'success') => {
-    if (!settings.hapticsEnabled) return;
-
-    switch (type) {
-      case 'light':
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        break;
-      case 'error':
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-        break;
-      case 'success':
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        break;
-    }
-  };
-
-  const handleNextPuzzle = () => {
-    console.log('PocketPuzzlesApp: Next puzzle');
-    setShowSolvedModal(false);
-    const currentIndex = puzzles.findIndex(p => p.id === selectedPuzzleId);
-    if (currentIndex >= 0 && currentIndex < puzzles.length - 1) {
-      const nextPuzzle = puzzles[currentIndex + 1];
-      handlePlayPuzzle(nextPuzzle);
+  const toggleSizeFilter = (size: 5 | 6 | 7 | 8) => {
+    console.log('Toggling size filter:', size);
+    if (sizeFilter.includes(size)) {
+      setSizeFilter(sizeFilter.filter(s => s !== size));
     } else {
-      handleBackToLibrary();
+      setSizeFilter([...sizeFilter, size]);
     }
+    triggerHaptic();
   };
 
-  const formatObjective = (puzzle: Puzzle): string => {
-    const depthText = puzzle.objective.depth;
-    return `Mate in ${depthText}`;
+  const toggleDifficultyFilter = (difficulty: 1 | 2 | 3 | 4 | 5) => {
+    console.log('Toggling difficulty filter:', difficulty);
+    if (difficultyFilter.includes(difficulty)) {
+      setDifficultyFilter(difficultyFilter.filter(d => d !== difficulty));
+    } else {
+      setDifficultyFilter([...difficultyFilter, difficulty]);
+    }
+    triggerHaptic();
+  };
+
+  const filteredPuzzles = BUILT_IN_PUZZLES.filter(puzzle => {
+    const sizeMatch = sizeFilter.length === 0 || sizeFilter.includes(puzzle.size);
+    const difficultyMatch = difficultyFilter.length === 0 || difficultyFilter.includes(puzzle.difficulty);
+    return sizeMatch && difficultyMatch;
+  });
+
+  const formatMateText = (depth: number): string => {
+    return `Mate in ${depth}`;
   };
 
   const formatSideToMove = (turn: 'w' | 'b'): string => {
-    return turn === 'w' ? 'White' : 'Black';
+    return turn === 'w' ? 'White to move' : 'Black to move';
   };
-
-  const checkedKingSquare = useMemo(() => {
-    if (!gameState || !selectedPuzzle) return null;
-    const isInCheck = isKingInCheck(gameState.pieces, gameState.turn, selectedPuzzle.size);
-    if (isInCheck) {
-      return getKingSquare(gameState.pieces, gameState.turn);
-    }
-    return null;
-  }, [gameState, selectedPuzzle]);
-
-  if (progressLoading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#3b82f6" />
-        <Text style={styles.loadingText}>Loading puzzles...</Text>
-      </View>
-    );
-  }
-
-  // Debug View
-  if (viewState === 'debug' && validationReport) {
-    const passedText = `${validationReport.passedPuzzles} passed`;
-    const failedText = `${validationReport.failedPuzzles.length} failed`;
-    const totalText = `${validationReport.totalPuzzles} total`;
-    const selfTestPassed = validationReport.selfTest.passed;
-    const selfTestErrors = validationReport.selfTest.errors;
-
-    return (
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={[styles.header, Platform.OS === 'android' && { paddingTop: 48 }]}>
-          <TouchableOpacity style={styles.backButton} onPress={() => setViewState('library')}>
-            <IconSymbol
-              ios_icon_name="chevron.left"
-              android_material_icon_name="arrow-back"
-              size={24}
-              color="#f1f5f9"
-            />
-            <Text style={styles.backButtonText}>Library</Text>
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Debug: Puzzle Validator</Text>
-        </View>
-
-        <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-          <View style={styles.debugCard}>
-            <Text style={styles.debugTitle}>Self-Test Result</Text>
-            <Text style={[styles.debugText, { color: selfTestPassed ? '#10b981' : '#ef4444' }]}>
-              {selfTestPassed ? '✓ All self-tests passed' : '✗ Self-tests failed'}
-            </Text>
-            {selfTestErrors.map((error, index) => (
-              <Text key={index} style={[styles.debugText, { color: '#ef4444', fontSize: 12 }]}>
-                • {error}
-              </Text>
-            ))}
-          </View>
-
-          <View style={styles.debugCard}>
-            <Text style={styles.debugTitle}>Validation Summary</Text>
-            <Text style={styles.debugText}>{totalText}</Text>
-            <Text style={[styles.debugText, { color: '#10b981' }]}>{passedText}</Text>
-            <Text style={[styles.debugText, { color: '#ef4444' }]}>{failedText}</Text>
-          </View>
-
-          {validationReport.failedPuzzles.length === 0 && (
-            <View style={styles.successCard}>
-              <Text style={styles.successText}>✓ All puzzles passed validation!</Text>
-            </View>
-          )}
-
-          {validationReport.failedPuzzles.map(result => {
-            const moveIndexText = result.failingMoveIndex !== undefined
-              ? `Move ${result.failingMoveIndex}`
-              : '';
-            const fromText = result.failingMoveFrom
-              ? `[${result.failingMoveFrom[0]}, ${result.failingMoveFrom[1]}]`
-              : '';
-            const toText = result.failingMoveTo
-              ? `[${result.failingMoveTo[0]}, ${result.failingMoveTo[1]}]`
-              : '';
-            const legalMovesCount = result.failingMoveLegalMoves?.length || 0;
-
-            return (
-              <View key={result.puzzleId} style={styles.errorCard}>
-                <Text style={styles.errorTitle}>Puzzle: {result.puzzleId}</Text>
-                {result.errors.map((error, index) => (
-                  <Text key={index} style={styles.errorText}>
-                    • {error}
-                  </Text>
-                ))}
-                {moveIndexText && (
-                  <View style={styles.errorDetailContainer}>
-                    <Text style={styles.errorDetailLabel}>Failing Move:</Text>
-                    <Text style={styles.errorDetailText}>{moveIndexText}</Text>
-                  </View>
-                )}
-                {fromText && toText && (
-                  <View style={styles.errorDetailContainer}>
-                    <Text style={styles.errorDetailLabel}>Required:</Text>
-                    <Text style={styles.errorDetailText}>{fromText} → {toText}</Text>
-                  </View>
-                )}
-                {result.failingMoveLegalMoves && result.failingMoveLegalMoves.length > 0 && (
-                  <View style={styles.errorDetailContainer}>
-                    <Text style={styles.errorDetailLabel}>Legal moves from {fromText}:</Text>
-                    {result.failingMoveLegalMoves.map((move, idx) => {
-                      const moveFromText = `[${move.from[0]}, ${move.from[1]}]`;
-                      const moveToText = `[${move.to[0]}, ${move.to[1]}]`;
-                      const promoText = move.promo ? ` (${move.promo})` : '';
-                      return (
-                        <Text key={idx} style={styles.errorDetailText}>
-                          • {moveFromText} → {moveToText}{promoText}
-                        </Text>
-                      );
-                    })}
-                  </View>
-                )}
-              </View>
-            );
-          })}
-        </ScrollView>
-      </SafeAreaView>
-    );
-  }
 
   // Library View
   if (viewState === 'library') {
-    const puzzleCount = puzzles.length;
-    const puzzleCountText = `${puzzleCount} puzzle${puzzleCount !== 1 ? 's' : ''}`;
+    const puzzleCountText = `${filteredPuzzles.length} puzzle${filteredPuzzles.length !== 1 ? 's' : ''}`;
 
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={[styles.header, Platform.OS === 'android' && { paddingTop: 48 }]}>
-          <View style={styles.headerRow}>
-            <View>
-              <Text style={styles.headerTitle}>Pocket Puzzles</Text>
-              <Text style={styles.headerSubtitle}>Checkmate challenges</Text>
-            </View>
-            {__DEV__ && validationReport && (
-              <TouchableOpacity
-                style={styles.debugButton}
-                onPress={() => setViewState('debug')}
-              >
-                <IconSymbol
-                  ios_icon_name="wrench.fill"
-                  android_material_icon_name="settings"
-                  size={20}
-                  color="#f1f5f9"
-                />
-                <Text style={styles.debugButtonText}>Debug</Text>
-              </TouchableOpacity>
-            )}
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+        <View style={styles.header}>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Pocket Puzzles</Text>
+          <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>
+            Offline chess mate puzzles
+          </Text>
+        </View>
+
+        <View style={[styles.filterSection, { borderBottomColor: colors.border }]}>
+          <Text style={[styles.filterLabel, { color: colors.textSecondary }]}>Size</Text>
+          <View style={styles.filterRow}>
+            {[5, 6, 7, 8].map(size => {
+              const isActive = sizeFilter.includes(size as 5 | 6 | 7 | 8);
+              return (
+                <TouchableOpacity
+                  key={size}
+                  style={[
+                    styles.filterChip,
+                    { backgroundColor: isActive ? colors.primary : colors.card, borderColor: colors.border },
+                  ]}
+                  onPress={() => toggleSizeFilter(size as 5 | 6 | 7 | 8)}
+                >
+                  <Text style={[styles.filterChipText, { color: isActive ? '#ffffff' : colors.text }]}>
+                    {size}×{size}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          <Text style={[styles.filterLabel, { color: colors.textSecondary, marginTop: 12 }]}>
+            Difficulty
+          </Text>
+          <View style={styles.filterRow}>
+            {[1, 2, 3, 4, 5].map(difficulty => {
+              const isActive = difficultyFilter.includes(difficulty as 1 | 2 | 3 | 4 | 5);
+              return (
+                <TouchableOpacity
+                  key={difficulty}
+                  style={[
+                    styles.filterChip,
+                    { backgroundColor: isActive ? colors.primary : colors.card, borderColor: colors.border },
+                  ]}
+                  onPress={() => toggleDifficultyFilter(difficulty as 1 | 2 | 3 | 4 | 5)}
+                >
+                  <Text style={[styles.filterChipText, { color: isActive ? '#ffffff' : colors.text }]}>
+                    {difficulty}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </View>
 
-        <FilterBar filters={filters} onFilterChange={setFilters} />
-
         <View style={styles.resultsHeader}>
-          <Text style={styles.resultsText}>{puzzleCountText}</Text>
+          <Text style={[styles.resultsText, { color: colors.textSecondary }]}>{puzzleCountText}</Text>
         </View>
 
         <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-          {puzzles.map(puzzle => {
-            const progress = getProgress(puzzle.id);
+          {filteredPuzzles.map(puzzle => {
+            const mateText = formatMateText(puzzle.objective.depth);
+            const solved = false;
+
             return (
-              <PuzzleCard
+              <TouchableOpacity
                 key={puzzle.id}
-                puzzle={puzzle}
-                solved={progress.solved}
+                style={[styles.puzzleCard, { backgroundColor: colors.card, borderColor: colors.border }]}
                 onPress={() => handlePlayPuzzle(puzzle)}
-              />
+              >
+                <View style={styles.puzzleCardHeader}>
+                  <View style={styles.puzzleCardTitleRow}>
+                    <Text style={[styles.puzzleTitle, { color: colors.text }]}>{puzzle.title}</Text>
+                    {solved && (
+                      <View style={[styles.solvedBadge, { backgroundColor: colors.success }]}>
+                        <Text style={styles.solvedBadgeText}>✓</Text>
+                      </View>
+                    )}
+                  </View>
+                  <Text style={[styles.puzzlePack, { color: colors.textSecondary }]}>{puzzle.pack}</Text>
+                </View>
+
+                <View style={styles.puzzleCardFooter}>
+                  <View style={styles.puzzleMetaRow}>
+                    <Text style={[styles.puzzleMeta, { color: colors.textSecondary }]}>
+                      {puzzle.size}×{puzzle.size}
+                    </Text>
+                    <Text style={[styles.puzzleMeta, { color: colors.textSecondary }]}>•</Text>
+                    <Text style={[styles.puzzleMeta, { color: colors.textSecondary }]}>
+                      Difficulty {puzzle.difficulty}
+                    </Text>
+                  </View>
+                  <Text style={[styles.puzzleObjective, { color: colors.primary }]}>{mateText}</Text>
+                </View>
+              </TouchableOpacity>
             );
           })}
 
-          {puzzles.length === 0 && (
+          {filteredPuzzles.length === 0 && (
             <View style={styles.emptyState}>
-              <Text style={styles.emptyStateText}>No puzzles match your filters</Text>
-              <TouchableOpacity onPress={() => setFilters({})}>
-                <Text style={styles.emptyStateButton}>Clear Filters</Text>
+              <Text style={[styles.emptyStateText, { color: colors.textSecondary }]}>
+                No puzzles match your filters
+              </Text>
+              <TouchableOpacity
+                onPress={() => {
+                  setSizeFilter([]);
+                  setDifficultyFilter([]);
+                  triggerHaptic();
+                }}
+              >
+                <Text style={[styles.emptyStateButton, { color: colors.primary }]}>Clear Filters</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -635,178 +218,63 @@ export default function PocketPuzzlesApp() {
   }
 
   // Play View
-  if (viewState === 'play' && selectedPuzzle && gameState) {
-    const sideToMoveText = formatSideToMove(gameState.turn);
-    const objectiveText = formatObjective(selectedPuzzle);
-    const noteText = selectedPuzzle.objective.note || '';
-    const canUndo = gameState.history.length > 0;
+  if (viewState === 'play' && selectedPuzzle) {
+    const mateText = formatMateText(selectedPuzzle.objective.depth);
+    const sideToMoveText = formatSideToMove(selectedPuzzle.turn);
+    const screenWidth = Dimensions.get('window').width;
+    const boardSize = Math.min(screenWidth - 32, 400);
+    const squareSize = boardSize / selectedPuzzle.size;
 
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={[styles.playHeader, Platform.OS === 'android' && { paddingTop: 48 }]}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+        <View style={styles.playHeader}>
           <TouchableOpacity style={styles.backButton} onPress={handleBackToLibrary}>
-            <IconSymbol
-              ios_icon_name="chevron.left"
-              android_material_icon_name="arrow-back"
-              size={24}
-              color="#f1f5f9"
-            />
-            <Text style={styles.backButtonText}>Library</Text>
+            <Text style={[styles.backButtonText, { color: colors.primary }]}>← Back</Text>
           </TouchableOpacity>
-
-          <View style={styles.playHeaderInfo}>
-            <Text style={styles.playTitle}>{selectedPuzzle.title}</Text>
-            <Text style={styles.playPack}>{selectedPuzzle.pack}</Text>
-          </View>
+          <Text style={[styles.playTitle, { color: colors.text }]}>{selectedPuzzle.title}</Text>
+          <Text style={[styles.playSubtitle, { color: colors.textSecondary }]}>{mateText}</Text>
         </View>
 
         <ScrollView style={styles.playScrollView} contentContainerStyle={styles.playScrollContent}>
-          <View style={styles.objectiveCard}>
-            <View style={styles.objectiveRow}>
-              <Text style={styles.objectiveLabel}>Side to move:</Text>
-              <Text style={styles.objectiveValue}>{sideToMoveText}</Text>
-            </View>
-            <View style={styles.objectiveRow}>
-              <Text style={styles.objectiveLabel}>Objective:</Text>
-              <Text style={styles.objectiveValue}>{objectiveText}</Text>
-            </View>
-            {noteText ? <Text style={styles.objectiveNote}>{noteText}</Text> : null}
+          <View style={[styles.infoCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Text style={[styles.infoText, { color: colors.textSecondary }]}>{sideToMoveText}</Text>
           </View>
 
-          <Animated.View
-            style={[
-              styles.boardContainer,
-              { transform: [{ translateX: shakeAnimation }] },
-            ]}
-          >
-            <ChessBoard
-              size={selectedPuzzle.size}
-              pieces={gameState.pieces}
-              selectedSquare={gameState.selectedSquare}
-              legalMoves={gameState.legalMoves}
-              lastMove={gameState.lastMove}
-              checkedKingSquare={checkedKingSquare}
-              onSquarePress={handleSquarePress}
-            />
-          </Animated.View>
+          <View style={[styles.board, { width: boardSize, height: boardSize }]}>
+            {Array.from({ length: selectedPuzzle.size }).map((_, row) => (
+              <View key={row} style={styles.boardRow}>
+                {Array.from({ length: selectedPuzzle.size }).map((_, col) => {
+                  const isLight = (row + col) % 2 === 0;
+                  const squareColor = isLight ? colors.lightSquare : colors.darkSquare;
+                  const displayRow = selectedPuzzle.size - 1 - row;
+                  const piece = selectedPuzzle.pieces.find(p => p.x === col && p.y === displayRow);
 
-          {errorMessage && (
-            <View style={styles.errorBanner}>
-              <Text style={styles.errorBannerText}>{errorMessage}</Text>
-            </View>
-          )}
-
-          <View style={styles.controls}>
-            <TouchableOpacity style={styles.controlButton} onPress={handleRestart}>
-              <IconSymbol
-                ios_icon_name="arrow.clockwise"
-                android_material_icon_name="refresh"
-                size={20}
-                color="#f1f5f9"
-              />
-              <Text style={styles.controlButtonText}>Restart</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.controlButton, !canUndo && styles.controlButtonDisabled]}
-              onPress={handleUndo}
-              disabled={!canUndo}
-            >
-              <IconSymbol
-                ios_icon_name="arrow.uturn.backward"
-                android_material_icon_name="undo"
-                size={20}
-                color={canUndo ? '#f1f5f9' : '#64748b'}
-              />
-              <Text
-                style={[
-                  styles.controlButtonText,
-                  !canUndo && styles.controlButtonTextDisabled,
-                ]}
-              >
-                Undo
-              </Text>
-            </TouchableOpacity>
+                  return (
+                    <View
+                      key={col}
+                      style={[
+                        styles.square,
+                        { width: squareSize, height: squareSize, backgroundColor: squareColor },
+                      ]}
+                    >
+                      {piece && (
+                        <View style={styles.pieceContainer}>
+                          <PieceIcon3D type={piece.type} color={piece.color} size={squareSize} />
+                        </View>
+                      )}
+                    </View>
+                  );
+                })}
+              </View>
+            ))}
           </View>
 
-          <View style={styles.hintCard}>
-            <Text style={styles.hintText}>
-              Tap on a piece to select it, then tap on a destination square to move.
+          <View style={[styles.noteCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Text style={[styles.noteText, { color: colors.textSecondary }]}>
+              This is a display-only view. Piece movement will be implemented in a future update.
             </Text>
           </View>
         </ScrollView>
-
-        <Modal
-          visible={showSolvedModal}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setShowSolvedModal(false)}
-        >
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>Puzzle Solved! 🎉</Text>
-              <Text style={styles.modalText}>
-                Congratulations! You completed the puzzle.
-              </Text>
-              <View style={styles.modalButtons}>
-                <TouchableOpacity
-                  style={styles.modalButton}
-                  onPress={handleBackToLibrary}
-                >
-                  <Text style={styles.modalButtonText}>Back to Library</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.modalButton, styles.modalButtonPrimary]}
-                  onPress={handleNextPuzzle}
-                >
-                  <Text style={[styles.modalButtonText, styles.modalButtonTextPrimary]}>
-                    Next Puzzle
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        </Modal>
-
-        <Modal
-          visible={showPromotionModal}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setShowPromotionModal(false)}
-        >
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>Promote Pawn</Text>
-              <Text style={styles.modalText}>Choose a piece:</Text>
-              <View style={styles.promotionButtons}>
-                <TouchableOpacity
-                  style={styles.promotionButton}
-                  onPress={() => handlePromotion('Q')}
-                >
-                  <Text style={styles.promotionButtonText}>Queen</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.promotionButton}
-                  onPress={() => handlePromotion('R')}
-                >
-                  <Text style={styles.promotionButtonText}>Rook</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.promotionButton}
-                  onPress={() => handlePromotion('B')}
-                >
-                  <Text style={styles.promotionButtonText}>Bishop</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.promotionButton}
-                  onPress={() => handlePromotion('N')}
-                >
-                  <Text style={styles.promotionButtonText}>Knight</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        </Modal>
       </SafeAreaView>
     );
   }
@@ -817,69 +285,110 @@ export default function PocketPuzzlesApp() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0f172a',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#0f172a',
-  },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: '#94a3b8',
   },
   header: {
-    paddingHorizontal: 16,
-    paddingVertical: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#334155',
-  },
-  headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 24,
   },
   headerTitle: {
     fontSize: 32,
     fontWeight: '800',
-    color: '#f1f5f9',
     marginBottom: 4,
   },
   headerSubtitle: {
     fontSize: 16,
-    color: '#94a3b8',
   },
-  debugButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#334155',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    gap: 6,
+  filterSection: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
   },
-  debugButtonText: {
+  filterLabel: {
     fontSize: 14,
-    color: '#f1f5f9',
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  filterRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  filterChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  filterChipText: {
+    fontSize: 14,
     fontWeight: '600',
   },
   resultsHeader: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     paddingVertical: 12,
   },
   resultsText: {
     fontSize: 14,
-    color: '#64748b',
     fontWeight: '600',
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     paddingBottom: 40,
+  },
+  puzzleCard: {
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+  },
+  puzzleCardHeader: {
+    marginBottom: 12,
+  },
+  puzzleCardTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  puzzleTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    flex: 1,
+  },
+  solvedBadge: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 8,
+  },
+  solvedBadgeText: {
+    fontSize: 14,
+    color: '#ffffff',
+    fontWeight: '700',
+  },
+  puzzlePack: {
+    fontSize: 14,
+  },
+  puzzleCardFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  puzzleMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  puzzleMeta: {
+    fontSize: 14,
+  },
+  puzzleObjective: {
+    fontSize: 14,
+    fontWeight: '700',
   },
   emptyState: {
     alignItems: 'center',
@@ -887,270 +396,73 @@ const styles = StyleSheet.create({
   },
   emptyStateText: {
     fontSize: 16,
-    color: '#64748b',
     marginBottom: 16,
   },
   emptyStateButton: {
     fontSize: 16,
-    color: '#60a5fa',
     fontWeight: '600',
   },
   playHeader: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#334155',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
   },
   backButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
     marginBottom: 12,
   },
   backButtonText: {
     fontSize: 16,
-    color: '#f1f5f9',
-    marginLeft: 4,
     fontWeight: '600',
-  },
-  playHeaderInfo: {
-    marginLeft: 28,
   },
   playTitle: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#f1f5f9',
-    marginBottom: 2,
+    marginBottom: 4,
   },
-  playPack: {
-    fontSize: 14,
-    color: '#94a3b8',
+  playSubtitle: {
+    fontSize: 16,
   },
   playScrollView: {
     flex: 1,
   },
   playScrollContent: {
-    paddingHorizontal: 16,
-    paddingVertical: 20,
+    paddingHorizontal: 20,
     paddingBottom: 40,
   },
-  objectiveCard: {
-    backgroundColor: '#1e293b',
+  infoCard: {
     borderRadius: 12,
     padding: 16,
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: '#334155',
   },
-  objectiveRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  objectiveLabel: {
-    fontSize: 14,
-    color: '#64748b',
-    marginRight: 8,
-  },
-  objectiveValue: {
+  infoText: {
     fontSize: 16,
-    color: '#f1f5f9',
-    fontWeight: '700',
-  },
-  objectiveNote: {
-    fontSize: 14,
-    color: '#e2e8f0',
-    fontStyle: 'italic',
-    marginTop: 4,
-  },
-  boardContainer: {
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  errorBanner: {
-    backgroundColor: '#7f1d1d',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: '#991b1b',
-  },
-  errorBannerText: {
-    fontSize: 16,
-    color: '#fca5a5',
     textAlign: 'center',
-    fontWeight: '600',
   },
-  controls: {
+  board: {
+    alignSelf: 'center',
+    borderRadius: 8,
+    overflow: 'hidden',
+    marginBottom: 20,
+  },
+  boardRow: {
     flexDirection: 'row',
+  },
+  square: {
+    alignItems: 'center',
     justifyContent: 'center',
-    gap: 16,
-    marginBottom: 20,
   },
-  controlButton: {
-    flexDirection: 'row',
+  pieceContainer: {
     alignItems: 'center',
-    backgroundColor: '#334155',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 8,
-    gap: 8,
-  },
-  controlButtonDisabled: {
-    backgroundColor: '#1e293b',
-  },
-  controlButtonText: {
-    fontSize: 16,
-    color: '#f1f5f9',
-    fontWeight: '600',
-  },
-  controlButtonTextDisabled: {
-    color: '#64748b',
-  },
-  hintCard: {
-    backgroundColor: '#1e293b',
-    borderRadius: 8,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: '#334155',
-  },
-  hintText: {
-    fontSize: 14,
-    color: '#94a3b8',
-    textAlign: 'center',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
     justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
   },
-  modalContent: {
-    backgroundColor: '#1e293b',
-    borderRadius: 16,
-    padding: 24,
-    width: '100%',
-    maxWidth: 400,
-    borderWidth: 1,
-    borderColor: '#334155',
-  },
-  modalTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#f1f5f9',
-    marginBottom: 12,
-    textAlign: 'center',
-  },
-  modalText: {
-    fontSize: 16,
-    color: '#94a3b8',
-    marginBottom: 24,
-    textAlign: 'center',
-  },
-  modalButtons: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  modalButton: {
-    flex: 1,
-    backgroundColor: '#334155',
-    paddingVertical: 14,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  modalButtonPrimary: {
-    backgroundColor: '#3b82f6',
-  },
-  modalButtonText: {
-    fontSize: 16,
-    color: '#f1f5f9',
-    fontWeight: '600',
-  },
-  modalButtonTextPrimary: {
-    color: '#ffffff',
-  },
-  promotionButtons: {
-    gap: 12,
-  },
-  promotionButton: {
-    backgroundColor: '#334155',
-    paddingVertical: 14,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  promotionButtonText: {
-    fontSize: 18,
-    color: '#f1f5f9',
-    fontWeight: '600',
-  },
-  debugCard: {
-    backgroundColor: '#1e293b',
+  noteCard: {
     borderRadius: 12,
     padding: 16,
-    marginBottom: 20,
     borderWidth: 1,
-    borderColor: '#334155',
   },
-  debugTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#f1f5f9',
-    marginBottom: 12,
-  },
-  debugText: {
-    fontSize: 16,
-    color: '#94a3b8',
-    marginBottom: 4,
-  },
-  successCard: {
-    backgroundColor: '#064e3b',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: '#10b981',
-  },
-  successText: {
-    fontSize: 18,
-    color: '#10b981',
-    fontWeight: '700',
-    textAlign: 'center',
-  },
-  errorCard: {
-    backgroundColor: '#7f1d1d',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: '#991b1b',
-  },
-  errorTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#fca5a5',
-    marginBottom: 8,
-  },
-  errorText: {
+  noteText: {
     fontSize: 14,
-    color: '#fca5a5',
-    marginBottom: 4,
-  },
-  errorDetailContainer: {
-    marginTop: 8,
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#991b1b',
-  },
-  errorDetailLabel: {
-    fontSize: 12,
-    color: '#fca5a5',
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  errorDetailText: {
-    fontSize: 12,
-    color: '#fca5a5',
-    marginLeft: 8,
-    marginBottom: 2,
+    textAlign: 'center',
+    lineHeight: 20,
   },
 });

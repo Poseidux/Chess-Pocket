@@ -1,221 +1,200 @@
 
 import React from 'react';
-import Svg, { Path, G } from 'react-native-svg';
-import { PieceType, PieceColor } from '@/data/types';
+import Svg, { Path, Defs, LinearGradient, Stop, Ellipse } from 'react-native-svg';
+import { PieceType, Color } from '@/data/types';
 
-interface PieceIconProps {
+interface PieceIcon3DProps {
   type: PieceType;
-  color: PieceColor;
+  color: Color;
   size: number;
 }
 
 /**
- * Custom chess piece icons using react-native-svg
- * White pieces are rendered as outlines, black pieces as filled silhouettes
- * All pieces use a cohesive, simplified design style
+ * 3D-styled chess piece icons using react-native-svg
+ * Uses gradient fills and subtle shadows for a 3D appearance
+ * Consistent across iOS and Android
  */
-export function PieceIcon({ type, color, size }: PieceIconProps) {
+export function PieceIcon3D({ type, color, size }: PieceIcon3DProps) {
   const isWhite = color === 'w';
-  const strokeWidth = isWhite ? 2 : 0;
-  const fill = isWhite ? 'none' : 'currentColor';
-  const stroke = isWhite ? 'currentColor' : 'none';
+  const iconSize = size * 0.75;
+  const viewBox = '0 0 100 100';
 
-  // Scale to 80% of square size
-  const iconSize = size * 0.8;
-  const viewBox = '0 0 45 45';
+  const gradientId = `gradient-${type}-${color}`;
+  const shadowId = `shadow-${type}-${color}`;
+
+  const lightColor = isWhite ? '#FFFFFF' : '#2C2C2C';
+  const darkColor = isWhite ? '#D0D0D0' : '#000000';
+  const shadowColor = isWhite ? 'rgba(0,0,0,0.15)' : 'rgba(0,0,0,0.4)';
 
   const renderPiece = () => {
     switch (type) {
       case 'K': // King
         return (
-          <G>
+          <>
+            <Ellipse cx="50" cy="92" rx="18" ry="3" fill={shadowColor} />
             <Path
-              d="M 22.5,11.63 L 22.5,6"
-              fill="none"
-              stroke={stroke}
-              strokeWidth={strokeWidth}
+              d="M 48 15 L 48 8 M 45 11.5 L 51 11.5"
+              stroke={darkColor}
+              strokeWidth="2.5"
               strokeLinecap="round"
             />
             <Path
-              d="M 20,8 L 25,8"
-              fill="none"
-              stroke={stroke}
-              strokeWidth={strokeWidth}
-              strokeLinecap="round"
+              d="M 50 20 C 50 20 54 16 54 12 C 54 12 53 10 50 10 C 47 10 46 12 46 12 C 46 16 50 20 50 20 Z"
+              fill={`url(#${gradientId})`}
+              stroke={darkColor}
+              strokeWidth="2"
             />
             <Path
-              d="M 22.5,25 C 22.5,25 27,17.5 25.5,14.5 C 25.5,14.5 24.5,12 22.5,12 C 20.5,12 19.5,14.5 19.5,14.5 C 18,17.5 22.5,25 22.5,25"
-              fill={fill}
-              stroke={stroke}
-              strokeWidth={strokeWidth}
-              strokeLinecap="round"
-              strokeLinejoin="round"
+              d="M 35 85 L 65 85 L 65 75 C 65 75 70 65 65 55 C 60 45 50 50 50 60 C 50 50 40 45 35 55 C 30 65 35 75 35 75 Z"
+              fill={`url(#${gradientId})`}
+              stroke={darkColor}
+              strokeWidth="2"
             />
-            <Path
-              d="M 11.5,37 C 17,40.5 27,40.5 32.5,37 L 32.5,30 C 32.5,30 41.5,25.5 38.5,19.5 C 34.5,13 25,16 22.5,23.5 L 22.5,27 L 22.5,23.5 C 20,16 10.5,13 6.5,19.5 C 3.5,25.5 11.5,29.5 11.5,29.5 L 11.5,37 z"
-              fill={fill}
-              stroke={stroke}
-              strokeWidth={strokeWidth}
-              strokeLinecap="round"
-            />
-          </G>
+          </>
         );
 
       case 'Q': // Queen
         return (
-          <G>
+          <>
+            <Ellipse cx="50" cy="92" rx="18" ry="3" fill={shadowColor} />
             <Path
-              d="M 9,26 C 17.5,24.5 30,24.5 36,26 L 38.5,13.5 L 31,25 L 30.7,10.9 L 25.5,24.5 L 22.5,10 L 19.5,24.5 L 14.3,10.9 L 14,25 L 6.5,13.5 L 9,26 z"
-              fill={fill}
-              stroke={stroke}
-              strokeWidth={strokeWidth}
-              strokeLinecap="round"
-              strokeLinejoin="round"
+              d="M 30 70 C 35 68 45 68 50 68 C 55 68 65 68 70 70 L 72 50 L 65 60 L 62 45 L 55 58 L 50 40 L 45 58 L 38 45 L 35 60 L 28 50 Z"
+              fill={`url(#${gradientId})`}
+              stroke={darkColor}
+              strokeWidth="2"
             />
             <Path
-              d="M 9,26 C 9,28 10.5,28 11.5,30 C 12.5,31.5 12.5,31 12,33.5 C 10.5,34.5 11,36 11,36 C 9.5,37.5 11,38.5 11,38.5 C 17.5,39.5 27.5,39.5 34,38.5 C 34,38.5 35.5,37.5 34,36 C 34,36 34.5,34.5 33,33.5 C 32.5,31 32.5,31.5 33.5,30 C 34.5,28 36,28 36,26 C 30,24.5 15,24.5 9,26 z"
-              fill={fill}
-              stroke={stroke}
-              strokeWidth={strokeWidth}
-              strokeLinecap="round"
+              d="M 30 70 C 30 72 31 73 32 75 C 33 77 33 78 32 80 C 31 82 32 84 32 84 L 68 84 C 68 84 69 82 68 80 C 67 78 67 77 68 75 C 69 73 70 72 70 70 Z"
+              fill={`url(#${gradientId})`}
+              stroke={darkColor}
+              strokeWidth="2"
             />
-            <Path
-              d="M 11.5,30 C 15,29 30,29 33.5,30"
-              fill="none"
-              stroke={stroke}
-              strokeWidth={strokeWidth}
-            />
-            <Path
-              d="M 12,33.5 C 18,32.5 27,32.5 33,33.5"
-              fill="none"
-              stroke={stroke}
-              strokeWidth={strokeWidth}
-            />
-          </G>
+          </>
         );
 
       case 'R': // Rook
         return (
-          <G>
+          <>
+            <Ellipse cx="50" cy="92" rx="16" ry="3" fill={shadowColor} />
             <Path
-              d="M 9,39 L 36,39 L 36,36 L 9,36 L 9,39 z"
-              fill={fill}
-              stroke={stroke}
-              strokeWidth={strokeWidth}
-              strokeLinecap="round"
+              d="M 32 85 L 68 85 L 68 80 L 32 80 Z"
+              fill={`url(#${gradientId})`}
+              stroke={darkColor}
+              strokeWidth="2"
             />
             <Path
-              d="M 12,36 L 12,32 L 33,32 L 33,36 L 12,36 z"
-              fill={fill}
-              stroke={stroke}
-              strokeWidth={strokeWidth}
-              strokeLinecap="round"
+              d="M 35 80 L 35 70 L 65 70 L 65 80"
+              fill={`url(#${gradientId})`}
+              stroke={darkColor}
+              strokeWidth="2"
             />
             <Path
-              d="M 11,14 L 11,9 L 15,9 L 15,11 L 20,11 L 20,9 L 25,9 L 25,11 L 30,11 L 30,9 L 34,9 L 34,14"
-              fill={fill}
-              stroke={stroke}
-              strokeWidth={strokeWidth}
-              strokeLinecap="round"
+              d="M 33 35 L 33 25 L 40 25 L 40 30 L 47 30 L 47 25 L 53 25 L 53 30 L 60 30 L 60 25 L 67 25 L 67 35"
+              fill={`url(#${gradientId})`}
+              stroke={darkColor}
+              strokeWidth="2"
             />
             <Path
-              d="M 34,14 L 31,17 L 14,17 L 11,14"
-              fill={fill}
-              stroke={stroke}
-              strokeWidth={strokeWidth}
-              strokeLinecap="round"
+              d="M 67 35 L 65 40 L 35 40 L 33 35"
+              fill={`url(#${gradientId})`}
+              stroke={darkColor}
+              strokeWidth="2"
             />
             <Path
-              d="M 31,17 L 31,29.5 L 14,29.5 L 14,17"
-              fill={fill}
-              stroke={stroke}
-              strokeWidth={strokeWidth}
-              strokeLinecap="round"
-              strokeLinejoin="round"
+              d="M 65 40 L 65 65 L 35 65 L 35 40"
+              fill={`url(#${gradientId})`}
+              stroke={darkColor}
+              strokeWidth="2"
             />
             <Path
-              d="M 31,29.5 L 32.5,32 L 12.5,32 L 14,29.5"
-              fill={fill}
-              stroke={stroke}
-              strokeWidth={strokeWidth}
-              strokeLinecap="round"
+              d="M 65 65 L 67 70 L 33 70 L 35 65"
+              fill={`url(#${gradientId})`}
+              stroke={darkColor}
+              strokeWidth="2"
             />
-          </G>
+          </>
         );
 
       case 'B': // Bishop
         return (
-          <G>
+          <>
+            <Ellipse cx="50" cy="92" rx="16" ry="3" fill={shadowColor} />
             <Path
-              d="M 9,36 C 12.39,35.03 19.11,36.43 22.5,34 C 25.89,36.43 32.61,35.03 36,36 C 36,36 37.65,36.54 39,38 C 38.32,38.97 37.35,38.99 36,38.5 C 32.61,37.53 25.89,38.96 22.5,37.5 C 19.11,38.96 12.39,37.53 9,38.5 C 7.65,38.99 6.68,38.97 6,38 C 7.35,36.54 9,36 9,36 z"
-              fill={fill}
-              stroke={stroke}
-              strokeWidth={strokeWidth}
-              strokeLinecap="round"
+              d="M 32 80 C 35 79 45 80 50 78 C 55 80 65 79 68 80 C 68 80 70 81 71 83 C 70 84 69 84 68 84 C 65 83 55 84 50 83 C 45 84 35 83 32 84 C 31 84 30 84 29 83 C 30 81 32 80 32 80 Z"
+              fill={`url(#${gradientId})`}
+              stroke={darkColor}
+              strokeWidth="2"
             />
             <Path
-              d="M 15,32 C 17.5,34.5 27.5,34.5 30,32 C 30.5,30.5 30,30 30,30 C 30,27.5 27.5,26 27.5,26 C 33,24.5 33.5,14.5 22.5,10.5 C 11.5,14.5 12,24.5 17.5,26 C 17.5,26 15,27.5 15,30 C 15,30 14.5,30.5 15,32 z"
-              fill={fill}
-              stroke={stroke}
-              strokeWidth={strokeWidth}
-              strokeLinecap="round"
+              d="M 38 70 C 40 72 60 72 62 70 C 63 68 62 67 62 67 C 62 64 60 62 60 62 C 65 60 66 50 50 45 C 34 50 35 60 40 62 C 40 62 38 64 38 67 C 38 67 37 68 38 70 Z"
+              fill={`url(#${gradientId})`}
+              stroke={darkColor}
+              strokeWidth="2"
             />
-            <Path
-              d="M 25,8 A 2.5,2.5 0 1 1 20,8 A 2.5,2.5 0 1 1 25,8 z"
-              fill={fill}
-              stroke={stroke}
-              strokeWidth={strokeWidth}
-              strokeLinecap="round"
+            <Ellipse
+              cx="50"
+              cy="20"
+              rx="4"
+              ry="4"
+              fill={`url(#${gradientId})`}
+              stroke={darkColor}
+              strokeWidth="2"
             />
-          </G>
+          </>
         );
 
       case 'N': // Knight
         return (
-          <G>
+          <>
+            <Ellipse cx="50" cy="92" rx="16" ry="3" fill={shadowColor} />
             <Path
-              d="M 22,10 C 32.5,11 38.5,18 38,39 L 15,39 C 15,30 25,32.5 23,18"
-              fill={fill}
-              stroke={stroke}
-              strokeWidth={strokeWidth}
-              strokeLinecap="round"
-              strokeLinejoin="round"
+              d="M 45 25 C 55 26 60 32 60 80 L 35 80 C 35 70 45 72 44 50"
+              fill={`url(#${gradientId})`}
+              stroke={darkColor}
+              strokeWidth="2"
             />
             <Path
-              d="M 24,18 C 24.38,20.91 18.45,25.37 16,27 C 13,29 13.18,31.34 11,31 C 9.958,30.06 12.41,27.96 11,28 C 10,28 11.19,29.23 10,30 C 9,30 5.997,31 6,26 C 6,24 12,14 12,14 C 12,14 13.89,12.1 14,10.5 C 13.27,9.506 13.5,8.5 13.5,7.5 C 14.5,6.5 16.5,10 16.5,10 L 18.5,10 C 18.5,10 19.28,8.008 21,7 C 22,7 22,10 22,10"
-              fill={fill}
-              stroke={stroke}
-              strokeWidth={strokeWidth}
-              strokeLinecap="round"
-              strokeLinejoin="round"
+              d="M 46 50 C 46 53 40 57 38 59 C 35 61 35 63 33 63 C 32 62 34 60 33 60 C 32 60 33 61 32 62 C 31 62 28 63 28 58 C 28 56 34 46 34 46 C 34 46 36 44 36 42 C 35 41 36 40 36 39 C 37 38 39 42 39 42 L 41 42 C 41 42 42 40 44 39 C 45 39 45 42 45 42"
+              fill={`url(#${gradientId})`}
+              stroke={darkColor}
+              strokeWidth="2"
             />
-            <Path
-              d="M 9.5,25.5 A 0.5,0.5 0 1 1 8.5,25.5 A 0.5,0.5 0 1 1 9.5,25.5 z"
-              fill={isWhite ? 'currentColor' : '#fff'}
-              stroke={isWhite ? 'currentColor' : '#fff'}
-              strokeWidth={1}
+            <Ellipse
+              cx="31"
+              cy="55"
+              rx="1.5"
+              ry="1.5"
+              fill={isWhite ? darkColor : lightColor}
             />
-          </G>
+          </>
         );
 
       case 'P': // Pawn
         return (
-          <G>
-            <Path
-              d="M 22.5,9 C 19.5,9 16.5,11.5 16.5,14.5 C 16.5,17 17.5,18.5 19,19.5 C 17.5,20.5 16,22 16,24 C 16,27 19,29 22.5,29 C 26,29 29,27 29,24 C 29,22 27.5,20.5 26,19.5 C 27.5,18.5 28.5,17 28.5,14.5 C 28.5,11.5 25.5,9 22.5,9 z"
-              fill={fill}
-              stroke={stroke}
-              strokeWidth={strokeWidth}
-              strokeLinecap="round"
+          <>
+            <Ellipse cx="50" cy="92" rx="14" ry="3" fill={shadowColor} />
+            <Ellipse
+              cx="50"
+              cy="30"
+              rx="10"
+              ry="10"
+              fill={`url(#${gradientId})`}
+              stroke={darkColor}
+              strokeWidth="2"
             />
             <Path
-              d="M 11,38.5 A 3.5,3.5 0 1 1 34,38.5"
-              fill={fill}
-              stroke={stroke}
-              strokeWidth={strokeWidth}
-              strokeLinecap="round"
+              d="M 42 40 C 40 42 38 45 38 50 C 38 55 42 58 50 58 C 58 58 62 55 62 50 C 62 45 60 42 58 40"
+              fill={`url(#${gradientId})`}
+              stroke={darkColor}
+              strokeWidth="2"
             />
-          </G>
+            <Path
+              d="M 35 80 C 35 75 40 70 50 70 C 60 70 65 75 65 80 Z"
+              fill={`url(#${gradientId})`}
+              stroke={darkColor}
+              strokeWidth="2"
+            />
+          </>
         );
 
       default:
@@ -225,6 +204,12 @@ export function PieceIcon({ type, color, size }: PieceIconProps) {
 
   return (
     <Svg width={iconSize} height={iconSize} viewBox={viewBox}>
+      <Defs>
+        <LinearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
+          <Stop offset="0%" stopColor={lightColor} stopOpacity="1" />
+          <Stop offset="100%" stopColor={darkColor} stopOpacity="1" />
+        </LinearGradient>
+      </Defs>
       {renderPiece()}
     </Svg>
   );

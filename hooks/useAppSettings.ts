@@ -1,19 +1,20 @@
 
 import { useAsyncStorage } from './useAsyncStorage';
 import { AppSettings } from '@/data/types';
+import { useColorScheme } from 'react-native';
 
 const SETTINGS_KEY = 'app_settings';
 
 const DEFAULT_SETTINGS: AppSettings = {
-  soundEnabled: true,
-  hapticsEnabled: true,
   theme: 'auto',
+  hapticsEnabled: true,
 };
 
 /**
- * Hook for managing app settings
+ * Hook for managing app settings (theme and haptics only)
  */
 export function useAppSettings() {
+  const systemColorScheme = useColorScheme();
   const [settings, setSettings, loading] = useAsyncStorage<AppSettings>(
     SETTINGS_KEY,
     DEFAULT_SETTINGS
@@ -24,15 +25,17 @@ export function useAppSettings() {
     await setSettings({ ...settings, ...updates });
   };
 
-  const setLastPlayedPuzzle = async (puzzleId: string) => {
-    console.log('useAppSettings: Setting last played puzzle:', puzzleId);
-    await updateSettings({ lastPlayedPuzzleId: puzzleId });
+  const getEffectiveTheme = (): 'light' | 'dark' => {
+    if (settings.theme === 'auto') {
+      return systemColorScheme === 'dark' ? 'dark' : 'light';
+    }
+    return settings.theme;
   };
 
   return {
     settings,
     updateSettings,
-    setLastPlayedPuzzle,
     loading,
+    effectiveTheme: getEffectiveTheme(),
   };
 }
