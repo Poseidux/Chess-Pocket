@@ -30,8 +30,10 @@ import {
   getKingSquare,
   needsPromotion,
 } from '@/utils/chessLogic';
+import { validateAllPuzzles, ValidationReport } from '@/utils/puzzleValidator';
+import { BUILT_IN_PUZZLES } from '@/data/builtInPuzzles';
 
-type ViewState = 'library' | 'play';
+type ViewState = 'library' | 'play' | 'debug';
 
 interface GameState {
   pieces: Piece[];
@@ -55,6 +57,7 @@ export default function PocketPuzzlesApp() {
   const [viewState, setViewState] = useState<ViewState>('library');
   const [selectedPuzzleId, setSelectedPuzzleId] = useState<string | null>(null);
   const [filters, setFilters] = useState<Filters>({});
+  const [validationReport, setValidationReport] = useState<ValidationReport | null>(null);
 
   // Game state
   const [gameState, setGameState] = useState<GameState | null>(null);
@@ -71,6 +74,23 @@ export default function PocketPuzzlesApp() {
 
   const { getProgress, markSolved, incrementAttempts, loading: progressLoading } = usePuzzleProgress();
   const { settings, setLastPlayedPuzzle } = useAppSettings();
+
+  // Run validator in dev mode on app start
+  useEffect(() => {
+    if (__DEV__) {
+      console.log('PocketPuzzlesApp: Running puzzle validator in dev mode');
+      const report = validateAllPuzzles(BUILT_IN_PUZZLES);
+      setValidationReport(report);
+
+      if (report.failedCount > 0) {
+        console.error(
+          `PocketPuzzlesApp: ${report.failedCount} puzzle(s) failed validation. Check Debug panel for details.`
+        );
+      } else {
+        console.log('PocketPuzzlesApp: All puzzles passed validation ✓');
+      }
+    }
+  }, []);
 
   // Get filtered puzzles
   const puzzles = useMemo(() => {
@@ -429,21 +449,10 @@ export default function PocketPuzzlesApp() {
     }
   };
 
-  // Helper to format objective text
+  // Helper to format objective text (always "Mate in X")
   const formatObjective = (puzzle: Puzzle): string => {
     const depthText = puzzle.objective.depth;
-    switch (puzzle.objective.type) {
-      case 'mate':
-        return `Mate in ${depthText}`;
-      case 'win':
-        return `Win in ${depthText}`;
-      case 'promote':
-        return `Promote in ${depthText}`;
-      case 'stalemate':
-        return `Stalemate in ${depthText}`;
-      default:
-        return `Objective: ${puzzle.objective.type}`;
-    }
+    return `Mate in ${depthText}`;
   };
 
   // Helper to format side to move
@@ -470,6 +479,58 @@ export default function PocketPuzzlesApp() {
     );
   }
 
+  // Debug View
+  if (viewState === 'debug' && validationReport) {
+    const passedText = `${validationReport.passedCount} passed`;
+    const failedText = `${validationReport.failedCount} failed`;
+    const totalText = `${validationReport.totalPuzzles} total`;
+
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backButton} onPress={() => setViewState('library')}>
+            <IconSymbol
+              ios_icon_name="chevron.left"
+              android_material_icon_name="arrow-back"
+              size={24}
+              color="#f1f5f9"
+            />
+            <Text style={styles.backButtonText}>Library</Text>
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Debug: Puzzle Validator</Text>
+        </View>
+
+        <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+          <View style={styles.debugCard}>
+            <Text style={styles.debugTitle}>Validation Summary</Text>
+            <Text style={styles.debugText}>{totalText}</Text>
+            <Text style={[styles.debugText, { color: '#10b981' }]}>{passedText}</Text>
+            <Text style={[styles.debugText, { color: '#ef4444' }]}>{failedText}</Text>
+          </View>
+
+          {validationReport.results
+            .filter(r => !r.passed)
+            .map(result => (
+              <View key={result.puzzleId} style={styles.errorCard}>
+                <Text style={styles.errorTitle}>Puzzle: {result.puzzleId}</Text>
+                {result.errors.map((error, index) => (
+                  <Text key={index} style={styles.errorText}>
+                    • {error}
+                  </Text>
+                ))}
+              </View>
+            ))}
+
+          {validationReport.failedCount === 0 && (
+            <View style={styles.successCard}>
+              <Text style={styles.successText}>✓ All puzzles passed validation!</Text>
+            </View>
+          )}
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
   // Library View
   if (viewState === 'library') {
     const puzzleCount = puzzles.length;
@@ -478,8 +539,26 @@ export default function PocketPuzzlesApp() {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Pocket Puzzles</Text>
-          <Text style={styles.headerSubtitle}>Sharpen your chess tactics</Text>
+          <View style={styles.headerRow}>
+            <View>
+              <Text style={styles.headerTitle}>Pocket Puzzles</Text>
+              <Text style={styles.headerSubtitle}>Checkmate challenges</Text>
+            </View>
+            {__DEV__ && validationReport && (
+              <TouchableOpacity
+                style={styles.debugButton}
+                onPress={() => setViewState('debug')}
+              >
+                <IconSymbol
+                  ios_icon_name="wrench.fill"
+                  android_material_icon_name="settings"
+                  size={20}
+                  color="#f1f5f9"
+                />
+                <Text style={styles.debugButtonText}>Debug</Text>
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
 
         <FilterBar filters={filters} onFilterChange={setFilters} />
@@ -665,25 +744,25 @@ export default function PocketPuzzlesApp() {
                   style={styles.promotionButton}
                   onPress={() => handlePromotion('Q')}
                 >
-                  <Text style={styles.promotionButtonText}>♕ Queen</Text>
+                  <Text style={styles.promotionButtonText}>Queen</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.promotionButton}
                   onPress={() => handlePromotion('R')}
                 >
-                  <Text style={styles.promotionButtonText}>♖ Rook</Text>
+                  <Text style={styles.promotionButtonText}>Rook</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.promotionButton}
                   onPress={() => handlePromotion('B')}
                 >
-                  <Text style={styles.promotionButtonText}>♗ Bishop</Text>
+                  <Text style={styles.promotionButtonText}>Bishop</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.promotionButton}
                   onPress={() => handlePromotion('N')}
                 >
-                  <Text style={styles.promotionButtonText}>♘ Knight</Text>
+                  <Text style={styles.promotionButtonText}>Knight</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -718,6 +797,11 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#334155',
   },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
   headerTitle: {
     fontSize: 32,
     fontWeight: '800',
@@ -727,6 +811,20 @@ const styles = StyleSheet.create({
   headerSubtitle: {
     fontSize: 16,
     color: '#94a3b8',
+  },
+  debugButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#334155',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    gap: 6,
+  },
+  debugButtonText: {
+    fontSize: 14,
+    color: '#f1f5f9',
+    fontWeight: '600',
   },
   resultsHeader: {
     paddingHorizontal: 16,
@@ -945,5 +1043,44 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: '#f1f5f9',
     fontWeight: '600',
+  },
+  debugCard: {
+    backgroundColor: '#1e293b',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  debugTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#f1f5f9',
+    marginBottom: 12,
+  },
+  debugText: {
+    fontSize: 16,
+    color: '#94a3b8',
+    marginBottom: 4,
+  },
+  successCard: {
+    backgroundColor: '#064e3b',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#10b981',
+  },
+  successText: {
+    fontSize: 18,
+    color: '#10b981',
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  errorTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#fca5a5',
+    marginBottom: 8,
   },
 });

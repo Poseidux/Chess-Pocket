@@ -11,72 +11,50 @@ interface PuzzleCardProps {
 }
 
 export function PuzzleCard({ puzzle, solved, onPress }: PuzzleCardProps) {
-  const difficultyStars = '★'.repeat(puzzle.difficulty) + '☆'.repeat(5 - puzzle.difficulty);
-  const sizeLabel = `${puzzle.size}×${puzzle.size}`;
-  
-  // Format objective nicely
   const formatObjective = (): string => {
     const depthText = puzzle.objective.depth;
-    switch (puzzle.objective.type) {
-      case 'mate':
-        return `Mate in ${depthText}`;
-      case 'win':
-        return `Win in ${depthText}`;
-      case 'promote':
-        return `Promote in ${depthText}`;
-      case 'stalemate':
-        return `Stalemate in ${depthText}`;
-      default:
-        return puzzle.objective.type;
-    }
+    return `Mate in ${depthText}`;
   };
 
-  const objectiveLabel = formatObjective();
-  const sideToMoveLabel = puzzle.turn === 'w' ? 'White' : 'Black';
+  const objectiveText = formatObjective();
+  const sizeText = `${puzzle.size}×${puzzle.size}`;
+  const difficultyStars = '★'.repeat(puzzle.difficulty);
 
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
       <View style={styles.header}>
-        <Text style={styles.title}>{puzzle.title}</Text>
-        {solved && (
-          <View style={styles.solvedBadge}>
-            <IconSymbol
-              ios_icon_name="checkmark.circle.fill"
-              android_material_icon_name="check-circle"
-              size={20}
-              color="#4ade80"
-            />
-          </View>
-        )}
+        <View style={styles.titleContainer}>
+          <Text style={styles.title}>{puzzle.title}</Text>
+          {solved && (
+            <View style={styles.solvedBadge}>
+              <IconSymbol
+                ios_icon_name="checkmark.circle.fill"
+                android_material_icon_name="check-circle"
+                size={16}
+                color="#10b981"
+              />
+            </View>
+          )}
+        </View>
+        <Text style={styles.pack}>{puzzle.pack}</Text>
       </View>
 
-      <Text style={styles.pack}>{puzzle.pack}</Text>
-
-      <View style={styles.metadata}>
-        <View style={styles.metadataItem}>
-          <Text style={styles.metadataLabel}>Size:</Text>
-          <Text style={styles.metadataValue}>{sizeLabel}</Text>
+      <View style={styles.details}>
+        <View style={styles.detailItem}>
+          <Text style={styles.detailLabel}>Size:</Text>
+          <Text style={styles.detailValue}>{sizeText}</Text>
         </View>
 
-        <View style={styles.metadataItem}>
-          <Text style={styles.metadataLabel}>Difficulty:</Text>
-          <Text style={styles.metadataValue}>{difficultyStars}</Text>
+        <View style={styles.detailItem}>
+          <Text style={styles.detailLabel}>Difficulty:</Text>
+          <Text style={styles.detailValue}>{difficultyStars}</Text>
         </View>
 
-        <View style={styles.metadataItem}>
-          <Text style={styles.metadataLabel}>Objective:</Text>
-          <Text style={styles.metadataValue}>{objectiveLabel}</Text>
+        <View style={styles.detailItem}>
+          <Text style={styles.detailLabel}>Objective:</Text>
+          <Text style={styles.detailValue}>{objectiveText}</Text>
         </View>
       </View>
-
-      <View style={styles.descriptionRow}>
-        <Text style={styles.descriptionLabel}>Side to move:</Text>
-        <Text style={styles.descriptionValue}>{sideToMoveLabel}</Text>
-      </View>
-
-      {puzzle.objective.note && (
-        <Text style={styles.note}>{puzzle.objective.note}</Text>
-      )}
     </TouchableOpacity>
   );
 }
@@ -91,8 +69,10 @@ const styles = StyleSheet.create({
     borderColor: '#334155',
   },
   header: {
+    marginBottom: 12,
+  },
+  titleContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 4,
   },
@@ -107,48 +87,25 @@ const styles = StyleSheet.create({
   },
   pack: {
     fontSize: 14,
-    color: '#94a3b8',
-    marginBottom: 12,
+    color: '#64748b',
   },
-  metadata: {
+  details: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginBottom: 8,
-    gap: 12,
+    gap: 16,
   },
-  metadataItem: {
+  detailItem: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  metadataLabel: {
-    fontSize: 13,
+  detailLabel: {
+    fontSize: 14,
     color: '#64748b',
     marginRight: 4,
   },
-  metadataValue: {
-    fontSize: 13,
-    color: '#cbd5e1',
+  detailValue: {
+    fontSize: 14,
+    color: '#e2e8f0',
     fontWeight: '600',
-  },
-  descriptionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  descriptionLabel: {
-    fontSize: 13,
-    color: '#64748b',
-    marginRight: 6,
-  },
-  descriptionValue: {
-    fontSize: 13,
-    color: '#cbd5e1',
-    fontWeight: '600',
-  },
-  note: {
-    fontSize: 13,
-    color: '#94a3b8',
-    fontStyle: 'italic',
-    marginTop: 4,
   },
 });

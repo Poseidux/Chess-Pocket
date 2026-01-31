@@ -1,8 +1,9 @@
 
 import React from 'react';
-import { View, Text, StyleSheet, Dimensions, TouchableOpacity } from 'react-native';
-import { Piece, PieceType, PieceColor } from '@/data/types';
+import { View, StyleSheet, Dimensions, TouchableOpacity } from 'react-native';
+import { Piece } from '@/data/types';
 import { Square } from '@/utils/chessLogic';
+import { PieceIcon } from './PieceIcon';
 
 interface ChessBoardProps {
   size: 4 | 5 | 6 | 8;
@@ -12,19 +13,6 @@ interface ChessBoardProps {
   lastMove: { from: Square; to: Square } | null;
   checkedKingSquare: Square | null;
   onSquarePress: (square: Square) => void;
-}
-
-// Helper to get piece symbol
-function getPieceSymbol(type: PieceType, color: PieceColor): string {
-  const symbols: Record<PieceType, { w: string; b: string }> = {
-    K: { w: '♔', b: '♚' },
-    Q: { w: '♕', b: '♛' },
-    R: { w: '♖', b: '♜' },
-    B: { w: '♗', b: '♝' },
-    N: { w: '♘', b: '♞' },
-    P: { w: '♙', b: '♟' },
-  };
-  return symbols[type][color];
 }
 
 export function ChessBoard({
@@ -104,7 +92,6 @@ export function ChessBoard({
           {row.map((piece, colIndex) => {
             const isLight = (rowIndex + colIndex) % 2 === 0;
             const baseColor = isLight ? '#f0d9b5' : '#b58863';
-            const pieceSymbol = piece ? getPieceSymbol(piece.type, piece.color) : '';
 
             const selected = isSquareSelected(rowIndex, colIndex);
             const legalMove = isSquareLegalMove(rowIndex, colIndex);
@@ -130,10 +117,8 @@ export function ChessBoard({
                 onPress={() => handleSquarePress(rowIndex, colIndex)}
                 activeOpacity={0.7}
               >
-                {pieceSymbol ? (
-                  <Text style={[styles.piece, { fontSize: squareSize * 0.7 }]}>
-                    {pieceSymbol}
-                  </Text>
+                {piece ? (
+                  <PieceIcon type={piece.type} color={piece.color} size={squareSize} />
                 ) : null}
                 {legalMove && (
                   <View
@@ -170,9 +155,6 @@ const styles = StyleSheet.create({
   square: {
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  piece: {
-    fontWeight: 'bold',
   },
   legalMoveDot: {
     position: 'absolute',

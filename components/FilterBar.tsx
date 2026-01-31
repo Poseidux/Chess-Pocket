@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
-import { Filters, PuzzleSize, Difficulty, ObjectiveType } from '@/data/types';
+import { Filters, PuzzleSize, Difficulty } from '@/data/types';
 import { ContentStore } from '@/data/ContentStore';
 
 interface FilterBarProps {
@@ -10,10 +10,7 @@ interface FilterBarProps {
 }
 
 export function FilterBar({ filters, onFilterChange }: FilterBarProps) {
-  const sizes: PuzzleSize[] = [4, 5, 6, 8];
-  const difficulties: Difficulty[] = [1, 2, 3, 4, 5];
-  const objectiveTypes = ContentStore.getAllObjectiveTypes();
-  const packs = ContentStore.getAllPacks();
+  const allPacks = ContentStore.getAllPacks();
 
   const toggleSize = (size: PuzzleSize) => {
     const currentSizes = filters.size || [];
@@ -28,15 +25,10 @@ export function FilterBar({ filters, onFilterChange }: FilterBarProps) {
     const newDifficulties = currentDifficulties.includes(difficulty)
       ? currentDifficulties.filter(d => d !== difficulty)
       : [...currentDifficulties, difficulty];
-    onFilterChange({ ...filters, difficulty: newDifficulties.length > 0 ? newDifficulties : undefined });
-  };
-
-  const toggleObjective = (objective: ObjectiveType) => {
-    const currentObjectives = filters.objectiveType || [];
-    const newObjectives = currentObjectives.includes(objective)
-      ? currentObjectives.filter(o => o !== objective)
-      : [...currentObjectives, objective];
-    onFilterChange({ ...filters, objectiveType: newObjectives.length > 0 ? newObjectives : undefined });
+    onFilterChange({
+      ...filters,
+      difficulty: newDifficulties.length > 0 ? newDifficulties : undefined,
+    });
   };
 
   const togglePack = (pack: string) => {
@@ -51,109 +43,85 @@ export function FilterBar({ filters, onFilterChange }: FilterBarProps) {
     onFilterChange({});
   };
 
-  const hasActiveFilters = 
+  const hasActiveFilters =
     (filters.size && filters.size.length > 0) ||
     (filters.difficulty && filters.difficulty.length > 0) ||
-    (filters.objectiveType && filters.objectiveType.length > 0) ||
     (filters.pack && filters.pack.length > 0);
-
-  const formatObjectiveLabel = (type: ObjectiveType): string => {
-    switch (type) {
-      case 'mate': return 'Mate';
-      case 'win': return 'Win';
-      case 'promote': return 'Promote';
-      case 'stalemate': return 'Stalemate';
-      default: return type;
-    }
-  };
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.label}>Filters</Text>
-        {hasActiveFilters && (
-          <TouchableOpacity onPress={clearFilters}>
-            <Text style={styles.clearButton}>Clear All</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.scrollView}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
+        {/* Size Filters */}
         <View style={styles.filterGroup}>
-          <Text style={styles.groupLabel}>Size:</Text>
-          {sizes.map(size => {
-            const isActive = filters.size?.includes(size) || false;
-            const sizeLabel = `${size}×${size}`;
+          <Text style={styles.filterLabel}>Size:</Text>
+          {([4, 5, 6, 8] as PuzzleSize[]).map(size => {
+            const sizeText = `${size}x${size}`;
+            const isActive = filters.size?.includes(size);
             return (
               <TouchableOpacity
                 key={size}
-                style={[styles.filterButton, isActive && styles.filterButtonActive]}
+                style={[styles.chip, isActive && styles.chipActive]}
                 onPress={() => toggleSize(size)}
               >
-                <Text style={[styles.filterButtonText, isActive && styles.filterButtonTextActive]}>
-                  {sizeLabel}
+                <Text style={[styles.chipText, isActive && styles.chipTextActive]}>
+                  {sizeText}
                 </Text>
               </TouchableOpacity>
             );
           })}
         </View>
 
+        {/* Difficulty Filters */}
         <View style={styles.filterGroup}>
-          <Text style={styles.groupLabel}>Difficulty:</Text>
-          {difficulties.map(difficulty => {
-            const isActive = filters.difficulty?.includes(difficulty) || false;
-            const difficultyLabel = '★'.repeat(difficulty);
+          <Text style={styles.filterLabel}>Difficulty:</Text>
+          {([1, 2, 3, 4, 5] as Difficulty[]).map(difficulty => {
+            const isActive = filters.difficulty?.includes(difficulty);
+            const stars = '★'.repeat(difficulty);
             return (
               <TouchableOpacity
                 key={difficulty}
-                style={[styles.filterButton, isActive && styles.filterButtonActive]}
+                style={[styles.chip, isActive && styles.chipActive]}
                 onPress={() => toggleDifficulty(difficulty)}
               >
-                <Text style={[styles.filterButtonText, isActive && styles.filterButtonTextActive]}>
-                  {difficultyLabel}
+                <Text style={[styles.chipText, isActive && styles.chipTextActive]}>
+                  {stars}
                 </Text>
               </TouchableOpacity>
             );
           })}
         </View>
 
-        <View style={styles.filterGroup}>
-          <Text style={styles.groupLabel}>Objective:</Text>
-          {objectiveTypes.map(objective => {
-            const isActive = filters.objectiveType?.includes(objective) || false;
-            const objectiveLabel = formatObjectiveLabel(objective);
-            return (
-              <TouchableOpacity
-                key={objective}
-                style={[styles.filterButton, isActive && styles.filterButtonActive]}
-                onPress={() => toggleObjective(objective)}
-              >
-                <Text style={[styles.filterButtonText, isActive && styles.filterButtonTextActive]}>
-                  {objectiveLabel}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
+        {/* Pack Filters */}
+        {allPacks.length > 1 && (
+          <View style={styles.filterGroup}>
+            <Text style={styles.filterLabel}>Pack:</Text>
+            {allPacks.map(pack => {
+              const isActive = filters.pack?.includes(pack);
+              return (
+                <TouchableOpacity
+                  key={pack}
+                  style={[styles.chip, isActive && styles.chipActive]}
+                  onPress={() => togglePack(pack)}
+                >
+                  <Text style={[styles.chipText, isActive && styles.chipTextActive]}>
+                    {pack}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        )}
 
-        <View style={styles.filterGroup}>
-          <Text style={styles.groupLabel}>Pack:</Text>
-          {packs.map(pack => {
-            const isActive = filters.pack?.includes(pack) || false;
-            const packLabel = pack.length > 20 ? pack.substring(0, 17) + '...' : pack;
-            return (
-              <TouchableOpacity
-                key={pack}
-                style={[styles.filterButton, isActive && styles.filterButtonActive]}
-                onPress={() => togglePack(pack)}
-              >
-                <Text style={[styles.filterButtonText, isActive && styles.filterButtonTextActive]}>
-                  {packLabel}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
+        {/* Clear All Button */}
+        {hasActiveFilters && (
+          <TouchableOpacity style={styles.clearButton} onPress={clearFilters}>
+            <Text style={styles.clearButtonText}>Clear All</Text>
+          </TouchableOpacity>
+        )}
       </ScrollView>
     </View>
   );
@@ -161,56 +129,55 @@ export function FilterBar({ filters, onFilterChange }: FilterBarProps) {
 
 const styles = StyleSheet.create({
   container: {
-    paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#334155',
+    paddingVertical: 12,
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  scrollContent: {
     paddingHorizontal: 16,
-    marginBottom: 8,
-  },
-  label: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#f1f5f9',
-  },
-  clearButton: {
-    fontSize: 14,
-    color: '#60a5fa',
-    fontWeight: '600',
-  },
-  scrollView: {
-    paddingHorizontal: 16,
+    gap: 16,
   },
   filterGroup: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginRight: 16,
+    gap: 8,
   },
-  groupLabel: {
+  filterLabel: {
     fontSize: 14,
+    fontWeight: '600',
     color: '#94a3b8',
-    marginRight: 8,
   },
-  filterButton: {
+  chip: {
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
-    backgroundColor: '#334155',
-    marginRight: 8,
+    backgroundColor: '#1e293b',
+    borderWidth: 1,
+    borderColor: '#334155',
   },
-  filterButtonActive: {
+  chipActive: {
     backgroundColor: '#3b82f6',
+    borderColor: '#3b82f6',
   },
-  filterButtonText: {
-    fontSize: 13,
-    color: '#cbd5e1',
+  chipText: {
+    fontSize: 14,
+    color: '#94a3b8',
     fontWeight: '600',
   },
-  filterButtonTextActive: {
+  chipTextActive: {
     color: '#ffffff',
+  },
+  clearButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: '#7f1d1d',
+    borderWidth: 1,
+    borderColor: '#991b1b',
+  },
+  clearButtonText: {
+    fontSize: 14,
+    color: '#fca5a5',
+    fontWeight: '600',
   },
 });
