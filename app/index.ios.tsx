@@ -484,10 +484,12 @@ export default function PocketPuzzlesApp() {
     const passedText = `${validationReport.passedCount} passed`;
     const failedText = `${validationReport.failedCount} failed`;
     const totalText = `${validationReport.totalPuzzles} total`;
+    const selfTestPassed = validationReport.selfTestResult.passed;
+    const selfTestMessage = validationReport.selfTestResult.message;
 
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={styles.header}>
+        <View style={[styles.header, Platform.OS === 'android' && { paddingTop: 48 }]}>
           <TouchableOpacity style={styles.backButton} onPress={() => setViewState('library')}>
             <IconSymbol
               ios_icon_name="chevron.left"
@@ -502,6 +504,13 @@ export default function PocketPuzzlesApp() {
 
         <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
           <View style={styles.debugCard}>
+            <Text style={styles.debugTitle}>Self-Test Result</Text>
+            <Text style={[styles.debugText, { color: selfTestPassed ? '#10b981' : '#ef4444' }]}>
+              {selfTestMessage}
+            </Text>
+          </View>
+
+          <View style={styles.debugCard}>
             <Text style={styles.debugTitle}>Validation Summary</Text>
             <Text style={styles.debugText}>{totalText}</Text>
             <Text style={[styles.debugText, { color: '#10b981' }]}>{passedText}</Text>
@@ -510,16 +519,31 @@ export default function PocketPuzzlesApp() {
 
           {validationReport.results
             .filter(r => !r.passed)
-            .map(result => (
-              <View key={result.puzzleId} style={styles.errorCard}>
-                <Text style={styles.errorTitle}>Puzzle: {result.puzzleId}</Text>
-                {result.errors.map((error, index) => (
-                  <Text key={index} style={styles.errorText}>
-                    • {error}
-                  </Text>
-                ))}
-              </View>
-            ))}
+            .map(result => {
+              const failingMoveText = result.failingMoveIndex !== undefined
+                ? `Failing move index: ${result.failingMoveIndex}`
+                : '';
+              const legalMovesText = result.failingMoveLegalMoves
+                ? `Legal moves: ${JSON.stringify(result.failingMoveLegalMoves)}`
+                : '';
+
+              return (
+                <View key={result.puzzleId} style={styles.errorCard}>
+                  <Text style={styles.errorTitle}>Puzzle: {result.puzzleId}</Text>
+                  {result.errors.map((error, index) => (
+                    <Text key={index} style={styles.errorText}>
+                      • {error}
+                    </Text>
+                  ))}
+                  {failingMoveText ? (
+                    <Text style={styles.errorDetailText}>{failingMoveText}</Text>
+                  ) : null}
+                  {legalMovesText ? (
+                    <Text style={styles.errorDetailText}>{legalMovesText}</Text>
+                  ) : null}
+                </View>
+              );
+            })}
 
           {validationReport.failedCount === 0 && (
             <View style={styles.successCard}>
@@ -538,7 +562,7 @@ export default function PocketPuzzlesApp() {
 
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={styles.header}>
+        <View style={[styles.header, Platform.OS === 'android' && { paddingTop: 48 }]}>
           <View style={styles.headerRow}>
             <View>
               <Text style={styles.headerTitle}>Pocket Puzzles</Text>
@@ -602,7 +626,7 @@ export default function PocketPuzzlesApp() {
 
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={styles.playHeader}>
+        <View style={[styles.playHeader, Platform.OS === 'android' && { paddingTop: 48 }]}>
           <TouchableOpacity style={styles.backButton} onPress={handleBackToLibrary}>
             <IconSymbol
               ios_icon_name="chevron.left"
@@ -1082,5 +1106,11 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#fca5a5',
     marginBottom: 8,
+  },
+  errorDetailText: {
+    fontSize: 12,
+    color: '#fca5a5',
+    marginTop: 4,
+    fontStyle: 'italic',
   },
 });
