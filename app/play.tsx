@@ -32,6 +32,12 @@ interface GameState {
   }[];
 }
 
+interface MoveHistoryEntry {
+  moveNumber: number;
+  whiteMove?: string;
+  blackMove?: string;
+}
+
 export default function PlayScreen() {
   const params = useLocalSearchParams();
   const router = useRouter();
@@ -51,6 +57,9 @@ export default function PlayScreen() {
   const [messageType, setMessageType] = useState<'info' | 'success' | 'error'>('info');
   const [showSolvedModal, setShowSolvedModal] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [showHint, setShowHint] = useState(false);
+  const [showMoveHistory, setShowMoveHistory] = useState(false);
+  const [moveHistory, setMoveHistory] = useState<MoveHistoryEntry[]>([]);
 
   const shakeAnim = useRef(new Animated.Value(0)).current;
 
@@ -64,6 +73,7 @@ export default function PlayScreen() {
     primary: '#3b82f6',
     success: '#10b981',
     error: '#ef4444',
+    warning: '#f59e0b',
   };
 
   useEffect(() => {
@@ -76,6 +86,7 @@ export default function PlayScreen() {
   useEffect(() => {
     if (gameState) {
       updateCheckedKingSquare();
+      updateMoveHistory();
     }
   }, [gameState]);
 
@@ -95,6 +106,8 @@ export default function PlayScreen() {
     setLastMove(null);
     setMessage('');
     setShowSolvedModal(false);
+    setShowHint(false);
+    setMoveHistory([]);
     
     const sideText = puzzle.turn === 'w' ? 'White' : 'Black';
     setMessage(`${sideText} to move`);
@@ -114,6 +127,82 @@ export default function PlayScreen() {
       }
     }
     setCheckedKingSquare(null);
+  };
+
+  const updateMoveHistory = () => {
+    if (!gameState || !puzzle) return;
+
+    const history: MoveHistoryEntry[] = [];
+    let moveNumber = 1;
+    
+    for (let i = 0; i < gameState.lineIndex; i++) {
+      const move = puzzle.line[i];
+      const moveText = formatMove(move);
+      
+      if (move.side === 'w') {
+        history.push({ moveNumber, whiteMove: moveText });
+      } else {
+        if (history.length > 0 && history[history.length - 1].moveNumber === moveNumber) {
+          history[history.length - 1].blackMove = moveText;
+          moveNumber++;
+        } else {
+          history.push({ moveNumber, blackMove: moveText });
+          moveNumber++;
+        }
+      }
+    }
+    
+    setMoveHistory(history);
+  };
+
+  const formatMove = (move: LineMove): string => {
+    const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+    const fromFile = files[move.from[0]];
+    const fromRank = move.from[1] + 1;
+    const toFile = files[move.to[0]];
+    const toRank = move.to[1] + 1;
+    
+    let moveText = `${fromFile}${fromRank}-${toFile}${toRank}`;
+    if (move.promo) {
+      moveText += `=${move.promo}`;
+    }
+    return moveText;
+  };
+
+  const getHint = (): string => {
+    if (!gameState || !puzzle) return '';
+    
+    if (gameState.lineIndex >= puzzle.line.length) {
+      return 'Puzzle complete!';
+    }
+    
+    const nextMove = puzzle.line[gameState.lineIndex];
+    if (nextMove.side !== gameState.currentSide) {
+      return 'Wait for opponent move';
+    }
+    
+    const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+    const fromFile = files[nextMove.from[0]];
+    const fromRank = nextMove.from[1] + 1;
+    const toFile = files[nextMove.to[0]];
+    const toRank = nextMove.to[1] + 1;
+    
+    const piece = gameState.pieces.find(p => p.x === nextMove.from[0] && p.y === nextMove.from[1]);
+    const pieceName = piece ? getPieceName(piece.type) : 'Piece';
+    
+    return `Try moving ${pieceName} from ${fromFile}${fromRank} to ${toFile}${toRank}`;
+  };
+
+  const getPieceName = (type: string): string => {
+    const names: Record<string, string> = {
+      'K': 'King',
+      'Q': 'Queen',
+      'R': 'Rook',
+      'B': 'Bishop',
+      'N': 'Knight',
+      'P': 'Pawn',
+    };
+    return names[type] || type;
   };
 
   const triggerHaptic = (type: 'select' | 'move' | 'error' | 'success') => {
@@ -151,10 +240,8 @@ export default function PlayScreen() {
 
     const piece = gameState.pieces.find(p => p.x === square[0] && p.y === square[1]);
 
-    // If no piece selected yet
     if (!selectedSquare) {
       if (piece && piece.color === gameState.currentSide) {
-        // Select piece
         console.log('Selecting piece:', piece.type, piece.color);
         setSelectedSquare(square);
         
@@ -168,7 +255,6 @@ export default function PlayScreen() {
       return;
     }
 
-    // If clicking the same square, deselect
     if (eq(selectedSquare, square)) {
       console.log('Deselecting piece');
       setSelectedSquare(null);
@@ -176,7 +262,6 @@ export default function PlayScreen() {
       return;
     }
 
-    // If clicking another piece of the same color, switch selection
     if (piece && piece.color === gameState.currentSide) {
       console.log('Switching selection to:', piece.type, piece.color);
       setSelectedSquare(square);
@@ -190,7 +275,6 @@ export default function PlayScreen() {
       return;
     }
 
-    // Attempt to move
     const isLegalDest = legalMoves.some(m => eq(m, square));
     if (!isLegalDest) {
       console.log('Illegal move attempt');
@@ -198,7 +282,6 @@ export default function PlayScreen() {
       return;
     }
 
-    // Check if this move matches the puzzle line
     attemptMove(selectedSquare, square);
   };
 
@@ -207,7 +290,6 @@ export default function PlayScreen() {
 
     console.log('Attempting move from', from, 'to', to);
 
-    // Check if we're at the end of the line
     if (gameState.lineIndex >= puzzle.line.length) {
       console.log('Already at end of puzzle line');
       return;
@@ -215,7 +297,6 @@ export default function PlayScreen() {
 
     const expectedMove = puzzle.line[gameState.lineIndex];
 
-    // Verify the move matches the expected line move
     const matchesFrom = eq(from, expectedMove.from);
     const matchesTo = eq(to, expectedMove.to);
     const matchesSide = gameState.currentSide === expectedMove.side;
@@ -223,7 +304,6 @@ export default function PlayScreen() {
     if (!matchesFrom || !matchesTo || !matchesSide) {
       console.log('Wrong move! Expected:', expectedMove, 'Got:', { from, to, side: gameState.currentSide });
       
-      // Wrong move
       triggerHaptic('error');
       shakeBoard();
       setMessage('Try again!');
@@ -235,7 +315,6 @@ export default function PlayScreen() {
       return;
     }
 
-    // Correct move!
     console.log('Correct move!');
     executeMove(from, to, expectedMove.promo);
   };
@@ -245,7 +324,6 @@ export default function PlayScreen() {
 
     setIsProcessing(true);
 
-    // Save current state to history
     const newHistory = [
       ...gameState.history,
       {
@@ -255,7 +333,6 @@ export default function PlayScreen() {
       },
     ];
 
-    // Apply the move
     const newPieces = applyMove(
       gameState.pieces,
       { from, to, promo },
@@ -277,11 +354,9 @@ export default function PlayScreen() {
     setLegalMoves([]);
     triggerHaptic('move');
 
-    // Check if puzzle is complete
     if (newLineIndex >= puzzle.line.length) {
       console.log('Puzzle line complete!');
       
-      // Verify checkmate
       setTimeout(() => {
         const opponentInCheckmate = isCheckmate(newPieces, puzzle.size, newSide);
         
@@ -302,10 +377,8 @@ export default function PlayScreen() {
       return;
     }
 
-    // Check if next move is opponent's auto-reply
     const nextMove = puzzle.line[newLineIndex];
     if (nextMove.side !== gameState.currentSide) {
-      // Opponent's turn - auto-play after delay
       console.log('Auto-playing opponent reply');
       setMessage('Opponent is thinking...');
       setMessageType('info');
@@ -314,7 +387,6 @@ export default function PlayScreen() {
         autoPlayOpponentMove(newPieces, newSide, newLineIndex, newHistory);
       }, 300);
     } else {
-      // User's turn again
       const sideText = newSide === 'w' ? 'White' : 'Black';
       setMessage(`${sideText} to move`);
       setMessageType('info');
@@ -333,7 +405,6 @@ export default function PlayScreen() {
     const opponentMove = puzzle.line[lineIndex];
     console.log('Auto-playing opponent move:', opponentMove);
 
-    // Apply opponent's move
     const newPieces = applyMove(
       pieces,
       {
@@ -347,7 +418,6 @@ export default function PlayScreen() {
     const newSide: PieceColor = side === 'w' ? 'b' : 'w';
     const newLineIndex = lineIndex + 1;
 
-    // Save state before opponent move
     const newHistory = [
       ...history,
       {
@@ -367,7 +437,6 @@ export default function PlayScreen() {
     setLastMove({ from: opponentMove.from, to: opponentMove.to });
     triggerHaptic('move');
 
-    // Check if puzzle is complete
     if (newLineIndex >= puzzle.line.length) {
       console.log('Puzzle line complete after opponent move!');
       
@@ -389,7 +458,6 @@ export default function PlayScreen() {
         setIsProcessing(false);
       }, 300);
     } else {
-      // User's turn
       const sideText = newSide === 'w' ? 'White' : 'Black';
       setMessage(`${sideText} to move`);
       setMessageType('info');
@@ -427,6 +495,18 @@ export default function PlayScreen() {
     router.back();
   };
 
+  const handleShowHint = () => {
+    console.log('User requested hint');
+    setShowHint(true);
+    triggerHaptic('select');
+  };
+
+  const handleToggleMoveHistory = () => {
+    console.log('User toggled move history');
+    setShowMoveHistory(!showMoveHistory);
+    triggerHaptic('select');
+  };
+
   if (!puzzle) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -452,6 +532,7 @@ export default function PlayScreen() {
 
   const progress = getProgress(puzzle.id);
   const mateText = `Mate in ${puzzle.objective.depth}`;
+  const hintText = getHint();
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
@@ -521,6 +602,68 @@ export default function PlayScreen() {
           </TouchableOpacity>
         </View>
 
+        <View style={styles.featureButtons}>
+          <TouchableOpacity
+            style={[styles.featureButton, { backgroundColor: colors.card, borderColor: colors.border }]}
+            onPress={handleShowHint}
+          >
+            <Text style={[styles.featureButtonText, { color: colors.warning }]}>💡 Hint</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.featureButton,
+              { backgroundColor: colors.card, borderColor: colors.border },
+              showMoveHistory && { borderColor: colors.primary },
+            ]}
+            onPress={handleToggleMoveHistory}
+          >
+            <Text style={[styles.featureButtonText, { color: colors.text }]}>
+              📜 History {showMoveHistory ? '▼' : '▶'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {showHint && (
+          <View style={[styles.hintCard, { backgroundColor: colors.card, borderColor: colors.warning }]}>
+            <Text style={[styles.hintTitle, { color: colors.warning }]}>💡 Hint</Text>
+            <Text style={[styles.hintText, { color: colors.text }]}>{hintText}</Text>
+            <TouchableOpacity
+              style={[styles.hintCloseButton, { backgroundColor: colors.background }]}
+              onPress={() => setShowHint(false)}
+            >
+              <Text style={[styles.hintCloseButtonText, { color: colors.text }]}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {showMoveHistory && (
+          <View style={[styles.historyCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Text style={[styles.historyTitle, { color: colors.text }]}>Move History</Text>
+            {moveHistory.length === 0 ? (
+              <Text style={[styles.historyEmpty, { color: colors.textSecondary }]}>
+                No moves yet
+              </Text>
+            ) : (
+              <View style={styles.historyList}>
+                {moveHistory.map((entry, index) => (
+                  <View key={index} style={styles.historyRow}>
+                    <Text style={[styles.historyMoveNumber, { color: colors.textSecondary }]}>
+                      {entry.moveNumber}.
+                    </Text>
+                    <Text style={[styles.historyMove, { color: colors.text }]}>
+                      {entry.whiteMove || '...'}
+                    </Text>
+                    <Text style={[styles.historyMove, { color: colors.text }]}>
+                      {entry.blackMove || ''}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+        )}
+
         {progress.solved && (
           <View style={[styles.solvedBanner, { backgroundColor: colors.success }]}>
             <Text style={styles.solvedBannerText}>✓ Solved</Text>
@@ -528,7 +671,6 @@ export default function PlayScreen() {
         )}
       </ScrollView>
 
-      {/* Solved Modal */}
       <Modal visible={showSolvedModal} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
@@ -625,6 +767,79 @@ const styles = StyleSheet.create({
   controlButtonText: {
     fontSize: 16,
     fontWeight: '600',
+  },
+  featureButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 12,
+  },
+  featureButton: {
+    flex: 1,
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    borderWidth: 1,
+  },
+  featureButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  hintCard: {
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 20,
+    borderWidth: 2,
+  },
+  hintTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  hintText: {
+    fontSize: 16,
+    marginBottom: 12,
+  },
+  hintCloseButton: {
+    borderRadius: 8,
+    padding: 12,
+    alignItems: 'center',
+  },
+  hintCloseButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  historyCard: {
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 20,
+    borderWidth: 1,
+  },
+  historyTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 12,
+  },
+  historyEmpty: {
+    fontSize: 14,
+    textAlign: 'center',
+    paddingVertical: 8,
+  },
+  historyList: {
+    gap: 8,
+  },
+  historyRow: {
+    flexDirection: 'row',
+    gap: 12,
+    paddingVertical: 4,
+  },
+  historyMoveNumber: {
+    fontSize: 14,
+    fontWeight: '600',
+    width: 30,
+  },
+  historyMove: {
+    fontSize: 14,
+    flex: 1,
   },
   solvedBanner: {
     borderRadius: 12,
