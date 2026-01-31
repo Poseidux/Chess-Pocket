@@ -1,4 +1,2 @@
 
-import PlayScreen from './play';
-
-export default PlayScreen;
+export { default } from './play';
