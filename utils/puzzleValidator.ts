@@ -5,12 +5,17 @@ import {
   isKingInCheck,
   getLegalMovesForPiece,
   getPieceAt,
+  isCheckmate,
+  runChessLogicSelfTest,
+  Square,
 } from './chessLogic';
 
 export interface ValidationResult {
   puzzleId: string;
   passed: boolean;
   errors: string[];
+  failingMoveIndex?: number;
+  failingMoveLegalMoves?: Square[];
 }
 
 export interface ValidationReport {
@@ -18,6 +23,7 @@ export interface ValidationReport {
   passedCount: number;
   failedCount: number;
   results: ValidationResult[];
+  selfTestResult: { passed: boolean; message: string };
 }
 
 /**
@@ -25,6 +31,8 @@ export interface ValidationReport {
  */
 export function validatePuzzle(puzzle: Puzzle): ValidationResult {
   const errors: string[] = [];
+  let failingMoveIndex: number | undefined;
+  let failingMoveLegalMoves: Square[] | undefined;
 
   console.log(`PuzzleValidator: Validating puzzle ${puzzle.id}`);
 
@@ -55,6 +63,7 @@ export function validatePuzzle(puzzle: Puzzle): ValidationResult {
       errors.push(
         `Move ${i}: Expected side ${currentTurn}, got ${move.side}`
       );
+      failingMoveIndex = i;
       break;
     }
 
@@ -64,6 +73,7 @@ export function validatePuzzle(puzzle: Puzzle): ValidationResult {
       errors.push(
         `Move ${i}: No piece at from square [${move.from[0]}, ${move.from[1]}]`
       );
+      failingMoveIndex = i;
       break;
     }
 
@@ -72,6 +82,7 @@ export function validatePuzzle(puzzle: Puzzle): ValidationResult {
       errors.push(
         `Move ${i}: Piece at from square is ${piece.color}, expected ${move.side}`
       );
+      failingMoveIndex = i;
       break;
     }
 
@@ -83,6 +94,9 @@ export function validatePuzzle(puzzle: Puzzle): ValidationResult {
       true
     );
 
+    // Store legal moves for debugging
+    failingMoveLegalMoves = legalMoves;
+
     // Verify the move is legal
     const isLegal = legalMoves.some(
       m => m[0] === move.to[0] && m[1] === move.to[1]
@@ -92,6 +106,7 @@ export function validatePuzzle(puzzle: Puzzle): ValidationResult {
       errors.push(
         `Move ${i}: Move from [${move.from[0]}, ${move.from[1]}] to [${move.to[0]}, ${move.to[1]}] is not legal. Legal moves: ${JSON.stringify(legalMoves)}`
       );
+      failingMoveIndex = i;
       break;
     }
 
@@ -102,58 +117,71 @@ export function validatePuzzle(puzzle: Puzzle): ValidationResult {
         errors.push(
           `Move ${i}: Promotion specified but piece is not a pawn (type: ${piece.type})`
         );
+        failingMoveIndex = i;
         break;
       }
       if (move.to[1] !== promotionRank) {
         errors.push(
           `Move ${i}: Promotion specified but destination is not promotion rank (y: ${move.to[1]}, expected: ${promotionRank})`
         );
+        failingMoveIndex = i;
         break;
       }
     }
 
-    // Execute the move
+    // Execute the move using the standardized applyMove
     currentPieces = makeMove(currentPieces, move.from, move.to, move.promo);
     currentTurn = currentTurn === 'w' ? 'b' : 'w';
+    
+    // Clear failing move data if this move succeeded
+    if (errors.length === 0) {
+      failingMoveIndex = undefined;
+      failingMoveLegalMoves = undefined;
+    }
   }
 
   if (errors.length > 0) {
-    return { puzzleId: puzzle.id, passed: false, errors };
+    return {
+      puzzleId: puzzle.id,
+      passed: false,
+      errors,
+      failingMoveIndex,
+      failingMoveLegalMoves,
+    };
   }
 
   // (c) After final ply, verify side-to-move is checkmated (for mate objectives)
   if (puzzle.objective.type === 'mate') {
     const kingColor = currentTurn;
-    const isInCheck = isKingInCheck(currentPieces, kingColor, puzzle.size);
+    const isCheckmated = isCheckmate(currentPieces, kingColor, puzzle.size);
 
-    if (!isInCheck) {
-      errors.push(
-        `Final position: King (${kingColor}) is not in check, but objective is mate`
-      );
-    } else {
-      // Verify king has no legal moves
-      const allPieces = currentPieces.filter(p => p.color === kingColor);
-      let hasLegalMove = false;
-
-      for (const piece of allPieces) {
-        const legalMoves = getLegalMovesForPiece(
-          currentPieces,
-          [piece.x, piece.y],
-          puzzle.size,
-          true
+    if (!isCheckmated) {
+      const isInCheck = isKingInCheck(currentPieces, kingColor, puzzle.size);
+      
+      if (!isInCheck) {
+        errors.push(
+          `Final position: King (${kingColor}) is not in check, but objective is mate`
         );
-        if (legalMoves.length > 0) {
-          hasLegalMove = true;
-          errors.push(
-            `Final position: ${kingColor} ${piece.type} at [${piece.x}, ${piece.y}] has ${legalMoves.length} legal move(s), but should be checkmated`
+      } else {
+        // Find which piece has legal moves
+        const allPieces = currentPieces.filter(p => p.color === kingColor);
+        for (const piece of allPieces) {
+          const legalMoves = getLegalMovesForPiece(
+            currentPieces,
+            [piece.x, piece.y],
+            puzzle.size,
+            true
           );
-          break;
+          if (legalMoves.length > 0) {
+            errors.push(
+              `Final position: ${kingColor} ${piece.type} at [${piece.x}, ${piece.y}] has ${legalMoves.length} legal move(s): ${JSON.stringify(legalMoves)}, but should be checkmated`
+            );
+            break;
+          }
         }
       }
-
-      if (!hasLegalMove && errors.length === 0) {
-        console.log(`PuzzleValidator: Puzzle ${puzzle.id} passed validation`);
-      }
+    } else {
+      console.log(`PuzzleValidator: Puzzle ${puzzle.id} passed validation`);
     }
   }
 
@@ -161,6 +189,8 @@ export function validatePuzzle(puzzle: Puzzle): ValidationResult {
     puzzleId: puzzle.id,
     passed: errors.length === 0,
     errors,
+    failingMoveIndex,
+    failingMoveLegalMoves,
   };
 }
 
@@ -169,6 +199,10 @@ export function validatePuzzle(puzzle: Puzzle): ValidationResult {
  */
 export function validateAllPuzzles(puzzles: Puzzle[]): ValidationReport {
   console.log(`PuzzleValidator: Validating ${puzzles.length} puzzles`);
+
+  // Run self-test first
+  const selfTestResult = runChessLogicSelfTest();
+  console.log(`PuzzleValidator: Self-test result: ${selfTestResult.message}`);
 
   const results: ValidationResult[] = [];
   let passedCount = 0;
@@ -186,6 +220,16 @@ export function validateAllPuzzles(puzzles: Puzzle[]): ValidationReport {
         `PuzzleValidator: Puzzle ${puzzle.id} FAILED validation:`,
         result.errors
       );
+      if (result.failingMoveIndex !== undefined) {
+        console.error(
+          `  Failing move index: ${result.failingMoveIndex}`
+        );
+        if (result.failingMoveLegalMoves) {
+          console.error(
+            `  Legal moves for that position: ${JSON.stringify(result.failingMoveLegalMoves)}`
+          );
+        }
+      }
     }
   }
 
@@ -194,6 +238,7 @@ export function validateAllPuzzles(puzzles: Puzzle[]): ValidationReport {
     passedCount,
     failedCount,
     results,
+    selfTestResult,
   };
 
   console.log(

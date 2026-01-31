@@ -489,7 +489,7 @@ export default function PocketPuzzlesApp() {
 
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={styles.header}>
+        <View style={[styles.header, Platform.OS === 'android' && { paddingTop: 48 }]}>
           <TouchableOpacity style={styles.backButton} onPress={() => setViewState('library')}>
             <IconSymbol
               ios_icon_name="chevron.left"
@@ -562,7 +562,7 @@ export default function PocketPuzzlesApp() {
 
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={styles.header}>
+        <View style={[styles.header, Platform.OS === 'android' && { paddingTop: 48 }]}>
           <View style={styles.headerRow}>
             <View>
               <Text style={styles.headerTitle}>Pocket Puzzles</Text>
@@ -626,7 +626,7 @@ export default function PocketPuzzlesApp() {
 
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={styles.playHeader}>
+        <View style={[styles.playHeader, Platform.OS === 'android' && { paddingTop: 48 }]}>
           <TouchableOpacity style={styles.backButton} onPress={handleBackToLibrary}>
             <IconSymbol
               ios_icon_name="chevron.left"
