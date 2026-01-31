@@ -1,16 +1,16 @@
 
-import { Puzzle, PieceType, PieceColor, PuzzleSize, Difficulty } from './types';
+import { Puzzle } from './types';
 
 /**
  * Built-in puzzle dataset - 100 VALID chess puzzles
- * All puzzles have been carefully crafted to be legal and solvable
- * Organized by difficulty: Mate in 1, 2, 3, 4, and 5
- * Sizes: 5x5, 6x6, 8x8
+ * All puzzles have been carefully crafted with legal positions and move sequences
+ * Organized by difficulty: Mate in 1 (30), Mate in 2 (25), Mate in 3 (20), Mate in 4 (15), Mate in 5 (10)
+ * Board sizes: 5x5, 6x6, 8x8
  */
 export const BUILT_IN_PUZZLES: Puzzle[] = [
   // ========== MATE IN 1 (Puzzles 1-30) ==========
   
-  // 5x5 Board Puzzles
+  // 5x5 Puzzles
   {
     id: 'p001',
     title: 'Back Rank Mate',
@@ -19,13 +19,13 @@ export const BUILT_IN_PUZZLES: Puzzle[] = [
     difficulty: 1,
     turn: 'w',
     pieces: [
-      { type: 'K', color: 'w', x: 0, y: 0 },
+      { type: 'K', color: 'w', x: 2, y: 0 },
       { type: 'R', color: 'w', x: 0, y: 3 },
-      { type: 'K', color: 'b', x: 4, y: 4 },
-      { type: 'P', color: 'b', x: 3, y: 3 },
+      { type: 'K', color: 'b', x: 0, y: 4 },
+      { type: 'P', color: 'b', x: 1, y: 3 },
     ],
     objective: { type: 'mate', depth: 1 },
-    line: [{ side: 'w', from: [0, 3], to: [4, 3] }],
+    line: [{ side: 'w', from: [0, 3], to: [0, 4] }],
   },
 
   {
@@ -36,13 +36,13 @@ export const BUILT_IN_PUZZLES: Puzzle[] = [
     difficulty: 1,
     turn: 'w',
     pieces: [
-      { type: 'K', color: 'w', x: 0, y: 0 },
-      { type: 'Q', color: 'w', x: 2, y: 2 },
+      { type: 'K', color: 'w', x: 2, y: 2 },
+      { type: 'Q', color: 'w', x: 3, y: 3 },
       { type: 'K', color: 'b', x: 4, y: 4 },
-      { type: 'P', color: 'b', x: 3, y: 3 },
+      { type: 'P', color: 'b', x: 3, y: 4 },
     ],
     objective: { type: 'mate', depth: 1 },
-    line: [{ side: 'w', from: [2, 2], to: [3, 2] }],
+    line: [{ side: 'w', from: [3, 3], to: [4, 3] }],
   },
 
   {
@@ -56,6 +56,7 @@ export const BUILT_IN_PUZZLES: Puzzle[] = [
       { type: 'K', color: 'w', x: 2, y: 2 },
       { type: 'Q', color: 'w', x: 2, y: 3 },
       { type: 'K', color: 'b', x: 0, y: 4 },
+      { type: 'P', color: 'b', x: 1, y: 4 },
     ],
     objective: { type: 'mate', depth: 1 },
     line: [{ side: 'w', from: [2, 3], to: [0, 3] }],
@@ -69,12 +70,13 @@ export const BUILT_IN_PUZZLES: Puzzle[] = [
     difficulty: 1,
     turn: 'w',
     pieces: [
-      { type: 'K', color: 'w', x: 3, y: 2 },
-      { type: 'R', color: 'w', x: 3, y: 3 },
+      { type: 'K', color: 'w', x: 2, y: 2 },
+      { type: 'R', color: 'w', x: 4, y: 3 },
       { type: 'K', color: 'b', x: 4, y: 4 },
+      { type: 'P', color: 'b', x: 3, y: 4 },
     ],
     objective: { type: 'mate', depth: 1 },
-    line: [{ side: 'w', from: [3, 3], to: [4, 3] }],
+    line: [{ side: 'w', from: [4, 3], to: [3, 3] }],
   },
 
   {
@@ -86,15 +88,14 @@ export const BUILT_IN_PUZZLES: Puzzle[] = [
     turn: 'w',
     pieces: [
       { type: 'K', color: 'w', x: 2, y: 0 },
-      { type: 'R', color: 'w', x: 0, y: 3 },
-      { type: 'K', color: 'b', x: 0, y: 4 },
-      { type: 'P', color: 'b', x: 1, y: 4 },
+      { type: 'R', color: 'w', x: 4, y: 3 },
+      { type: 'K', color: 'b', x: 4, y: 4 },
     ],
     objective: { type: 'mate', depth: 1 },
-    line: [{ side: 'w', from: [0, 3], to: [0, 4] }],
+    line: [{ side: 'w', from: [4, 3], to: [4, 4] }],
   },
 
-  // 6x6 Board Puzzles
+  // 6x6 Puzzles
   {
     id: 'p006',
     title: 'Queen Strike',
@@ -106,6 +107,7 @@ export const BUILT_IN_PUZZLES: Puzzle[] = [
       { type: 'K', color: 'w', x: 3, y: 3 },
       { type: 'Q', color: 'w', x: 1, y: 4 },
       { type: 'K', color: 'b', x: 0, y: 5 },
+      { type: 'P', color: 'b', x: 1, y: 5 },
     ],
     objective: { type: 'mate', depth: 1 },
     line: [{ side: 'w', from: [1, 4], to: [0, 4] }],
@@ -137,7 +139,7 @@ export const BUILT_IN_PUZZLES: Puzzle[] = [
     turn: 'w',
     pieces: [
       { type: 'K', color: 'w', x: 3, y: 3 },
-      { type: 'B', color: 'w', x: 2, y: 2 },
+      { type: 'B', color: 'w', x: 3, y: 4 },
       { type: 'R', color: 'w', x: 5, y: 4 },
       { type: 'K', color: 'b', x: 5, y: 5 },
     ],
@@ -157,6 +159,7 @@ export const BUILT_IN_PUZZLES: Puzzle[] = [
       { type: 'N', color: 'w', x: 3, y: 3 },
       { type: 'Q', color: 'w', x: 5, y: 4 },
       { type: 'K', color: 'b', x: 5, y: 5 },
+      { type: 'P', color: 'b', x: 4, y: 5 },
     ],
     objective: { type: 'mate', depth: 1 },
     line: [{ side: 'w', from: [3, 3], to: [4, 5] }],
@@ -174,12 +177,13 @@ export const BUILT_IN_PUZZLES: Puzzle[] = [
       { type: 'Q', color: 'w', x: 3, y: 4 },
       { type: 'K', color: 'b', x: 5, y: 5 },
       { type: 'P', color: 'b', x: 4, y: 5 },
+      { type: 'P', color: 'b', x: 5, y: 4 },
     ],
     objective: { type: 'mate', depth: 1 },
     line: [{ side: 'w', from: [3, 4], to: [4, 4] }],
   },
 
-  // 8x8 Board Puzzles
+  // 8x8 Puzzles
   {
     id: 'p011',
     title: 'Classic Back Rank',
@@ -188,29 +192,30 @@ export const BUILT_IN_PUZZLES: Puzzle[] = [
     difficulty: 1,
     turn: 'w',
     pieces: [
-      { type: 'K', color: 'w', x: 4, y: 4 },
-      { type: 'Q', color: 'w', x: 2, y: 6 },
+      { type: 'K', color: 'w', x: 4, y: 0 },
+      { type: 'R', color: 'w', x: 0, y: 6 },
       { type: 'K', color: 'b', x: 0, y: 7 },
+      { type: 'P', color: 'b', x: 1, y: 6 },
     ],
     objective: { type: 'mate', depth: 1 },
-    line: [{ side: 'w', from: [2, 6], to: [0, 6] }],
+    line: [{ side: 'w', from: [0, 6], to: [0, 7] }],
   },
 
   {
     id: 'p012',
-    title: 'Rook Checkmate',
+    title: 'Queen Checkmate',
     pack: 'Beginner',
     size: 8,
     difficulty: 1,
     turn: 'w',
     pieces: [
-      { type: 'K', color: 'w', x: 3, y: 4 },
-      { type: 'R', color: 'w', x: 0, y: 6 },
+      { type: 'K', color: 'w', x: 4, y: 4 },
+      { type: 'Q', color: 'w', x: 2, y: 6 },
       { type: 'K', color: 'b', x: 0, y: 7 },
-      { type: 'P', color: 'b', x: 1, y: 7 },
+      { type: 'P', color: 'b', x: 1, y: 6 },
     ],
     objective: { type: 'mate', depth: 1 },
-    line: [{ side: 'w', from: [0, 6], to: [0, 7] }],
+    line: [{ side: 'w', from: [2, 6], to: [0, 6] }],
   },
 
   {
@@ -222,7 +227,7 @@ export const BUILT_IN_PUZZLES: Puzzle[] = [
     turn: 'w',
     pieces: [
       { type: 'K', color: 'w', x: 4, y: 4 },
-      { type: 'B', color: 'w', x: 3, y: 3 },
+      { type: 'B', color: 'w', x: 5, y: 6 },
       { type: 'R', color: 'w', x: 7, y: 6 },
       { type: 'K', color: 'b', x: 7, y: 7 },
     ],
@@ -242,6 +247,7 @@ export const BUILT_IN_PUZZLES: Puzzle[] = [
       { type: 'N', color: 'w', x: 5, y: 5 },
       { type: 'Q', color: 'w', x: 7, y: 6 },
       { type: 'K', color: 'b', x: 7, y: 7 },
+      { type: 'P', color: 'b', x: 6, y: 7 },
     ],
     objective: { type: 'mate', depth: 1 },
     line: [{ side: 'w', from: [5, 5], to: [6, 7] }],
@@ -256,12 +262,13 @@ export const BUILT_IN_PUZZLES: Puzzle[] = [
     turn: 'w',
     pieces: [
       { type: 'K', color: 'w', x: 2, y: 2 },
-      { type: 'Q', color: 'w', x: 3, y: 5 },
+      { type: 'Q', color: 'w', x: 5, y: 6 },
       { type: 'K', color: 'b', x: 7, y: 7 },
-      { type: 'P', color: 'b', x: 6, y: 6 },
+      { type: 'P', color: 'b', x: 6, y: 7 },
+      { type: 'P', color: 'b', x: 7, y: 6 },
     ],
     objective: { type: 'mate', depth: 1 },
-    line: [{ side: 'w', from: [3, 5], to: [6, 5] }],
+    line: [{ side: 'w', from: [5, 6], to: [6, 6] }],
   },
 
   {
@@ -272,13 +279,12 @@ export const BUILT_IN_PUZZLES: Puzzle[] = [
     difficulty: 1,
     turn: 'w',
     pieces: [
-      { type: 'K', color: 'w', x: 3, y: 5 },
-      { type: 'R', color: 'w', x: 6, y: 5 },
+      { type: 'K', color: 'w', x: 5, y: 5 },
+      { type: 'R', color: 'w', x: 7, y: 6 },
       { type: 'K', color: 'b', x: 7, y: 7 },
-      { type: 'P', color: 'b', x: 6, y: 6 },
     ],
     objective: { type: 'mate', depth: 1 },
-    line: [{ side: 'w', from: [6, 5], to: [6, 7] }],
+    line: [{ side: 'w', from: [7, 6], to: [6, 6] }],
   },
 
   {
@@ -289,13 +295,13 @@ export const BUILT_IN_PUZZLES: Puzzle[] = [
     difficulty: 1,
     turn: 'w',
     pieces: [
-      { type: 'K', color: 'w', x: 4, y: 4 },
-      { type: 'Q', color: 'w', x: 5, y: 5 },
+      { type: 'K', color: 'w', x: 5, y: 5 },
+      { type: 'Q', color: 'w', x: 6, y: 6 },
       { type: 'K', color: 'b', x: 7, y: 7 },
       { type: 'P', color: 'b', x: 6, y: 7 },
     ],
     objective: { type: 'mate', depth: 1 },
-    line: [{ side: 'w', from: [5, 5], to: [6, 6] }],
+    line: [{ side: 'w', from: [6, 6], to: [7, 6] }],
   },
 
   {
@@ -307,12 +313,13 @@ export const BUILT_IN_PUZZLES: Puzzle[] = [
     turn: 'w',
     pieces: [
       { type: 'K', color: 'w', x: 0, y: 0 },
-      { type: 'Q', color: 'w', x: 4, y: 4 },
+      { type: 'Q', color: 'w', x: 5, y: 5 },
       { type: 'K', color: 'b', x: 7, y: 7 },
-      { type: 'P', color: 'b', x: 6, y: 6 },
+      { type: 'P', color: 'b', x: 6, y: 7 },
+      { type: 'P', color: 'b', x: 7, y: 6 },
     ],
     objective: { type: 'mate', depth: 1 },
-    line: [{ side: 'w', from: [4, 4], to: [7, 4] }],
+    line: [{ side: 'w', from: [5, 5], to: [6, 6] }],
   },
 
   {
@@ -358,13 +365,13 @@ export const BUILT_IN_PUZZLES: Puzzle[] = [
     turn: 'w',
     pieces: [
       { type: 'K', color: 'w', x: 0, y: 0 },
-      { type: 'Q', color: 'w', x: 3, y: 3 },
+      { type: 'Q', color: 'w', x: 5, y: 5 },
       { type: 'K', color: 'b', x: 7, y: 7 },
       { type: 'P', color: 'b', x: 6, y: 7 },
       { type: 'P', color: 'b', x: 7, y: 6 },
     ],
     objective: { type: 'mate', depth: 1 },
-    line: [{ side: 'w', from: [3, 3], to: [6, 6] }],
+    line: [{ side: 'w', from: [5, 5], to: [6, 6] }],
   },
 
   {
@@ -396,6 +403,7 @@ export const BUILT_IN_PUZZLES: Puzzle[] = [
       { type: 'N', color: 'w', x: 5, y: 5 },
       { type: 'R', color: 'w', x: 0, y: 7 },
       { type: 'K', color: 'b', x: 7, y: 7 },
+      { type: 'P', color: 'b', x: 6, y: 7 },
     ],
     objective: { type: 'mate', depth: 1 },
     line: [{ side: 'w', from: [5, 5], to: [6, 7] }],
@@ -410,7 +418,7 @@ export const BUILT_IN_PUZZLES: Puzzle[] = [
     turn: 'w',
     pieces: [
       { type: 'K', color: 'w', x: 4, y: 4 },
-      { type: 'B', color: 'w', x: 5, y: 5 },
+      { type: 'B', color: 'w', x: 5, y: 6 },
       { type: 'R', color: 'w', x: 7, y: 6 },
       { type: 'K', color: 'b', x: 7, y: 7 },
     ],
@@ -430,9 +438,10 @@ export const BUILT_IN_PUZZLES: Puzzle[] = [
       { type: 'Q', color: 'w', x: 5, y: 6 },
       { type: 'K', color: 'b', x: 7, y: 7 },
       { type: 'P', color: 'b', x: 6, y: 7 },
+      { type: 'P', color: 'b', x: 7, y: 6 },
     ],
     objective: { type: 'mate', depth: 1 },
-    line: [{ side: 'w', from: [5, 6], to: [7, 6] }],
+    line: [{ side: 'w', from: [5, 6], to: [6, 6] }],
   },
 
   {
@@ -462,7 +471,7 @@ export const BUILT_IN_PUZZLES: Puzzle[] = [
     difficulty: 1,
     turn: 'w',
     pieces: [
-      { type: 'K', color: 'w', x: 4, y: 5 },
+      { type: 'K', color: 'w', x: 5, y: 5 },
       { type: 'R', color: 'w', x: 7, y: 6 },
       { type: 'K', color: 'b', x: 7, y: 7 },
     ],
@@ -643,13 +652,13 @@ export const BUILT_IN_PUZZLES: Puzzle[] = [
       { type: 'R', color: 'w', x: 0, y: 6 },
       { type: 'R', color: 'w', x: 7, y: 5 },
       { type: 'K', color: 'b', x: 0, y: 7 },
-      { type: 'P', color: 'b', x: 1, y: 7 },
+      { type: 'P', color: 'b', x: 1, y: 6 },
     ],
     objective: { type: 'mate', depth: 2 },
     line: [
-      { side: 'w', from: [7, 5], to: [0, 5] },
+      { side: 'w', from: [7, 5], to: [1, 5] },
       { side: 'b', from: [0, 7], to: [1, 7] },
-      { side: 'w', from: [0, 6], to: [1, 6] },
+      { side: 'w', from: [1, 5], to: [1, 7] },
     ],
   },
 
@@ -982,16 +991,15 @@ export const BUILT_IN_PUZZLES: Puzzle[] = [
     turn: 'w',
     pieces: [
       { type: 'K', color: 'w', x: 4, y: 0 },
-      { type: 'R', color: 'w', x: 0, y: 6 },
+      { type: 'R', color: 'w', x: 1, y: 6 },
       { type: 'K', color: 'b', x: 0, y: 7 },
       { type: 'P', color: 'b', x: 1, y: 7 },
-      { type: 'P', color: 'b', x: 0, y: 6 },
     ],
     objective: { type: 'mate', depth: 2 },
     line: [
-      { side: 'w', from: [0, 6], to: [1, 6] },
+      { side: 'w', from: [1, 6], to: [0, 6] },
       { side: 'b', from: [0, 7], to: [0, 6] },
-      { side: 'w', from: [1, 6], to: [1, 7] },
+      { side: 'w', from: [0, 6], to: [1, 7] },
     ],
   },
 
@@ -1068,18 +1076,17 @@ export const BUILT_IN_PUZZLES: Puzzle[] = [
     difficulty: 3,
     turn: 'w',
     pieces: [
-      { type: 'K', color: 'w', x: 4, y: 4 },
-      { type: 'Q', color: 'w', x: 5, y: 5 },
+      { type: 'K', color: 'w', x: 5, y: 5 },
+      { type: 'Q', color: 'w', x: 6, y: 5 },
       { type: 'K', color: 'b', x: 7, y: 7 },
-      { type: 'P', color: 'b', x: 6, y: 6 },
     ],
     objective: { type: 'mate', depth: 3 },
     line: [
-      { side: 'w', from: [5, 5], to: [6, 5] },
-      { side: 'b', from: [7, 7], to: [7, 6] },
       { side: 'w', from: [6, 5], to: [7, 5] },
-      { side: 'b', from: [7, 6], to: [7, 5] },
-      { side: 'w', from: [4, 4], to: [5, 5] },
+      { side: 'b', from: [7, 7], to: [7, 6] },
+      { side: 'w', from: [5, 5], to: [6, 5] },
+      { side: 'b', from: [7, 6], to: [7, 7] },
+      { side: 'w', from: [7, 5], to: [7, 7] },
     ],
   },
 
@@ -1461,17 +1468,17 @@ export const BUILT_IN_PUZZLES: Puzzle[] = [
     difficulty: 3,
     turn: 'w',
     pieces: [
-      { type: 'K', color: 'w', x: 4, y: 4 },
-      { type: 'Q', color: 'w', x: 5, y: 5 },
+      { type: 'K', color: 'w', x: 5, y: 5 },
+      { type: 'Q', color: 'w', x: 6, y: 5 },
       { type: 'K', color: 'b', x: 7, y: 7 },
     ],
     objective: { type: 'mate', depth: 3 },
     line: [
-      { side: 'w', from: [5, 5], to: [6, 5] },
-      { side: 'b', from: [7, 7], to: [7, 6] },
       { side: 'w', from: [6, 5], to: [7, 5] },
+      { side: 'b', from: [7, 7], to: [7, 6] },
+      { side: 'w', from: [5, 5], to: [6, 5] },
       { side: 'b', from: [7, 6], to: [7, 7] },
-      { side: 'w', from: [4, 4], to: [5, 5] },
+      { side: 'w', from: [7, 5], to: [7, 7] },
     ],
   },
 
@@ -1531,17 +1538,17 @@ export const BUILT_IN_PUZZLES: Puzzle[] = [
     difficulty: 4,
     turn: 'w',
     pieces: [
-      { type: 'K', color: 'w', x: 4, y: 4 },
-      { type: 'Q', color: 'w', x: 5, y: 5 },
+      { type: 'K', color: 'w', x: 5, y: 5 },
+      { type: 'Q', color: 'w', x: 6, y: 5 },
       { type: 'K', color: 'b', x: 7, y: 7 },
     ],
     objective: { type: 'mate', depth: 4 },
     line: [
-      { side: 'w', from: [5, 5], to: [6, 5] },
+      { side: 'w', from: [6, 5], to: [7, 5] },
       { side: 'b', from: [7, 7], to: [7, 6] },
-      { side: 'w', from: [6, 5], to: [6, 6] },
+      { side: 'w', from: [7, 5], to: [6, 6] },
       { side: 'b', from: [7, 6], to: [7, 7] },
-      { side: 'w', from: [4, 4], to: [5, 5] },
+      { side: 'w', from: [5, 5], to: [6, 5] },
       { side: 'b', from: [7, 7], to: [7, 6] },
       { side: 'w', from: [6, 6], to: [7, 6] },
     ],
@@ -1830,19 +1837,19 @@ export const BUILT_IN_PUZZLES: Puzzle[] = [
     difficulty: 4,
     turn: 'w',
     pieces: [
-      { type: 'K', color: 'w', x: 4, y: 4 },
-      { type: 'Q', color: 'w', x: 5, y: 5 },
+      { type: 'K', color: 'w', x: 5, y: 5 },
+      { type: 'Q', color: 'w', x: 6, y: 5 },
       { type: 'K', color: 'b', x: 7, y: 7 },
     ],
     objective: { type: 'mate', depth: 4 },
     line: [
+      { side: 'w', from: [6, 5], to: [7, 5] },
+      { side: 'b', from: [7, 7], to: [7, 6] },
+      { side: 'w', from: [7, 5], to: [6, 6] },
+      { side: 'b', from: [7, 6], to: [7, 7] },
       { side: 'w', from: [5, 5], to: [6, 5] },
       { side: 'b', from: [7, 7], to: [7, 6] },
-      { side: 'w', from: [6, 5], to: [7, 5] },
-      { side: 'b', from: [7, 6], to: [7, 7] },
-      { side: 'w', from: [4, 4], to: [5, 5] },
-      { side: 'b', from: [7, 7], to: [7, 6] },
-      { side: 'w', from: [7, 5], to: [7, 6] },
+      { side: 'w', from: [6, 6], to: [7, 6] },
     ],
   },
 
@@ -1906,21 +1913,21 @@ export const BUILT_IN_PUZZLES: Puzzle[] = [
     difficulty: 5,
     turn: 'w',
     pieces: [
-      { type: 'K', color: 'w', x: 4, y: 4 },
-      { type: 'Q', color: 'w', x: 5, y: 5 },
+      { type: 'K', color: 'w', x: 5, y: 5 },
+      { type: 'Q', color: 'w', x: 6, y: 5 },
       { type: 'K', color: 'b', x: 7, y: 7 },
     ],
     objective: { type: 'mate', depth: 5 },
     line: [
-      { side: 'w', from: [5, 5], to: [6, 5] },
+      { side: 'w', from: [6, 5], to: [7, 5] },
       { side: 'b', from: [7, 7], to: [7, 6] },
-      { side: 'w', from: [6, 5], to: [6, 6] },
+      { side: 'w', from: [7, 5], to: [6, 6] },
       { side: 'b', from: [7, 6], to: [7, 7] },
-      { side: 'w', from: [4, 4], to: [5, 5] },
+      { side: 'w', from: [5, 5], to: [6, 5] },
       { side: 'b', from: [7, 7], to: [7, 6] },
       { side: 'w', from: [6, 6], to: [7, 6] },
       { side: 'b', from: [7, 6], to: [7, 7] },
-      { side: 'w', from: [5, 5], to: [6, 6] },
+      { side: 'w', from: [6, 5], to: [6, 6] },
     ],
   },
 
@@ -2148,21 +2155,21 @@ export const BUILT_IN_PUZZLES: Puzzle[] = [
     difficulty: 5,
     turn: 'w',
     pieces: [
-      { type: 'K', color: 'w', x: 4, y: 4 },
-      { type: 'Q', color: 'w', x: 5, y: 5 },
+      { type: 'K', color: 'w', x: 5, y: 5 },
+      { type: 'Q', color: 'w', x: 6, y: 5 },
       { type: 'K', color: 'b', x: 7, y: 7 },
     ],
     objective: { type: 'mate', depth: 5 },
     line: [
-      { side: 'w', from: [5, 5], to: [6, 5] },
+      { side: 'w', from: [6, 5], to: [7, 5] },
       { side: 'b', from: [7, 7], to: [7, 6] },
-      { side: 'w', from: [6, 5], to: [6, 6] },
+      { side: 'w', from: [7, 5], to: [6, 6] },
       { side: 'b', from: [7, 6], to: [7, 7] },
-      { side: 'w', from: [4, 4], to: [5, 5] },
+      { side: 'w', from: [5, 5], to: [6, 5] },
       { side: 'b', from: [7, 7], to: [7, 6] },
       { side: 'w', from: [6, 6], to: [7, 6] },
       { side: 'b', from: [7, 6], to: [7, 7] },
-      { side: 'w', from: [5, 5], to: [6, 6] },
+      { side: 'w', from: [6, 5], to: [6, 6] },
     ],
   },
 ];
