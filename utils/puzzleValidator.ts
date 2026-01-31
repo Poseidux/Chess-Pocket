@@ -14,7 +14,7 @@ import {
   getPieceAt,
   generateLegalMoves,
   applyMove,
-  isCheckmate,
+  isInCheck,
   runChessLogicSelfTest,
   Move,
 } from './chessLogic';
@@ -149,8 +149,13 @@ function validatePuzzle(puzzle: Puzzle): ValidationResult {
 
   // After all moves, verify checkmate for mate objectives
   if (puzzle.objective.type === 'mate') {
-    if (!isCheckmate(currentPieces, puzzle.size, currentSide)) {
-      errors.push(`Final position: ${currentSide} is not in checkmate`);
+    const opponentInCheck = isInCheck(currentPieces, puzzle.size, currentSide);
+    const opponentLegalMoves = generateLegalMoves(currentPieces, puzzle.size, currentSide);
+
+    if (!opponentInCheck || opponentLegalMoves.length > 0) {
+      errors.push(
+        `Final position: ${currentSide} is not in checkmate (inCheck: ${opponentInCheck}, legalMoves: ${opponentLegalMoves.length})`
+      );
     }
   }
 

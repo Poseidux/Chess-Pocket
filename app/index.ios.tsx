@@ -103,7 +103,7 @@ export default function PocketPuzzlesApp() {
   const selectedPuzzle = useMemo(() => {
     if (!selectedPuzzleId) return null;
     return ContentStore.getPuzzleById(selectedPuzzleId);
-  }, [filters]);
+  }, [selectedPuzzleId]);
 
   // Initialize game state when puzzle is selected
   useEffect(() => {
@@ -441,18 +441,15 @@ export default function PocketPuzzlesApp() {
     }
   };
 
-  // Helper to format objective text (always "Mate in X")
   const formatObjective = (puzzle: Puzzle): string => {
     const depthText = puzzle.objective.depth;
     return `Mate in ${depthText}`;
   };
 
-  // Helper to format side to move
   const formatSideToMove = (turn: 'w' | 'b'): string => {
     return turn === 'w' ? 'White' : 'Black';
   };
 
-  // Get checked king square
   const checkedKingSquare = useMemo(() => {
     if (!gameState || !selectedPuzzle) return null;
     const isInCheck = isKingInCheck(gameState.pieces, gameState.turn, selectedPuzzle.size);
@@ -501,7 +498,7 @@ export default function PocketPuzzlesApp() {
               {selfTestPassed ? '✓ All self-tests passed' : '✗ Self-tests failed'}
             </Text>
             {selfTestErrors.map((error, index) => (
-              <Text key={index} style={[styles.debugText, { color: '#ef4444' }]}>
+              <Text key={index} style={[styles.debugText, { color: '#ef4444', fontSize: 12 }]}>
                 • {error}
               </Text>
             ))}
@@ -514,16 +511,23 @@ export default function PocketPuzzlesApp() {
             <Text style={[styles.debugText, { color: '#ef4444' }]}>{failedText}</Text>
           </View>
 
+          {validationReport.failedPuzzles.length === 0 && (
+            <View style={styles.successCard}>
+              <Text style={styles.successText}>✓ All puzzles passed validation!</Text>
+            </View>
+          )}
+
           {validationReport.failedPuzzles.map(result => {
-            const failingMoveText = result.failingMoveIndex !== undefined
-              ? `Failing move index: ${result.failingMoveIndex}`
+            const moveIndexText = result.failingMoveIndex !== undefined
+              ? `Move ${result.failingMoveIndex}`
               : '';
-            const fromToText = result.failingMoveFrom && result.failingMoveTo
-              ? `From: [${result.failingMoveFrom[0]}, ${result.failingMoveFrom[1]}] To: [${result.failingMoveTo[0]}, ${result.failingMoveTo[1]}]`
+            const fromText = result.failingMoveFrom
+              ? `[${result.failingMoveFrom[0]}, ${result.failingMoveFrom[1]}]`
               : '';
-            const legalMovesText = result.failingMoveLegalMoves
-              ? `Legal moves from that square: ${JSON.stringify(result.failingMoveLegalMoves)}`
+            const toText = result.failingMoveTo
+              ? `[${result.failingMoveTo[0]}, ${result.failingMoveTo[1]}]`
               : '';
+            const legalMovesCount = result.failingMoveLegalMoves?.length || 0;
 
             return (
               <View key={result.puzzleId} style={styles.errorCard}>
@@ -533,24 +537,36 @@ export default function PocketPuzzlesApp() {
                     • {error}
                   </Text>
                 ))}
-                {failingMoveText ? (
-                  <Text style={styles.errorDetailText}>{failingMoveText}</Text>
-                ) : null}
-                {fromToText ? (
-                  <Text style={styles.errorDetailText}>{fromToText}</Text>
-                ) : null}
-                {legalMovesText ? (
-                  <Text style={styles.errorDetailText}>{legalMovesText}</Text>
-                ) : null}
+                {moveIndexText && (
+                  <View style={styles.errorDetailContainer}>
+                    <Text style={styles.errorDetailLabel}>Failing Move:</Text>
+                    <Text style={styles.errorDetailText}>{moveIndexText}</Text>
+                  </View>
+                )}
+                {fromText && toText && (
+                  <View style={styles.errorDetailContainer}>
+                    <Text style={styles.errorDetailLabel}>Required:</Text>
+                    <Text style={styles.errorDetailText}>{fromText} → {toText}</Text>
+                  </View>
+                )}
+                {result.failingMoveLegalMoves && result.failingMoveLegalMoves.length > 0 && (
+                  <View style={styles.errorDetailContainer}>
+                    <Text style={styles.errorDetailLabel}>Legal moves from {fromText}:</Text>
+                    {result.failingMoveLegalMoves.map((move, idx) => {
+                      const moveFromText = `[${move.from[0]}, ${move.from[1]}]`;
+                      const moveToText = `[${move.to[0]}, ${move.to[1]}]`;
+                      const promoText = move.promo ? ` (${move.promo})` : '';
+                      return (
+                        <Text key={idx} style={styles.errorDetailText}>
+                          • {moveFromText} → {moveToText}{promoText}
+                        </Text>
+                      );
+                    })}
+                  </View>
+                )}
               </View>
             );
           })}
-
-          {validationReport.failedPuzzles.length === 0 && (
-            <View style={styles.successCard}>
-              <Text style={styles.successText}>✓ All puzzles passed validation!</Text>
-            </View>
-          )}
         </ScrollView>
       </SafeAreaView>
     );
@@ -675,8 +691,8 @@ export default function PocketPuzzlesApp() {
           </Animated.View>
 
           {errorMessage && (
-            <View style={styles.errorCard}>
-              <Text style={styles.errorText}>{errorMessage}</Text>
+            <View style={styles.errorBanner}>
+              <Text style={styles.errorBannerText}>{errorMessage}</Text>
             </View>
           )}
 
@@ -720,7 +736,6 @@ export default function PocketPuzzlesApp() {
           </View>
         </ScrollView>
 
-        {/* Solved Modal */}
         <Modal
           visible={showSolvedModal}
           transparent
@@ -753,7 +768,6 @@ export default function PocketPuzzlesApp() {
           </View>
         </Modal>
 
-        {/* Promotion Modal */}
         <Modal
           visible={showPromotionModal}
           transparent
@@ -952,7 +966,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 20,
   },
-  errorCard: {
+  errorBanner: {
     backgroundColor: '#7f1d1d',
     borderRadius: 8,
     padding: 12,
@@ -960,7 +974,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#991b1b',
   },
-  errorText: {
+  errorBannerText: {
     fontSize: 16,
     color: '#fca5a5',
     textAlign: 'center',
@@ -1102,16 +1116,41 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     textAlign: 'center',
   },
+  errorCard: {
+    backgroundColor: '#7f1d1d',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#991b1b',
+  },
   errorTitle: {
     fontSize: 16,
     fontWeight: '700',
     color: '#fca5a5',
     marginBottom: 8,
   },
+  errorText: {
+    fontSize: 14,
+    color: '#fca5a5',
+    marginBottom: 4,
+  },
+  errorDetailContainer: {
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#991b1b',
+  },
+  errorDetailLabel: {
+    fontSize: 12,
+    color: '#fca5a5',
+    fontWeight: '600',
+    marginBottom: 4,
+  },
   errorDetailText: {
     fontSize: 12,
     color: '#fca5a5',
-    marginTop: 4,
-    fontStyle: 'italic',
+    marginLeft: 8,
+    marginBottom: 2,
   },
 });
