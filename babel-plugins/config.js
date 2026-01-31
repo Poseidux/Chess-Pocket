@@ -1,3 +1,4 @@
+
 /* eslint-disable */
 
 const EDITABLE_ELEMENTS = ["Text", "View", "TouchableOpacity", "Image"];
@@ -8,6 +9,7 @@ const OMITTED_PATHS = [
   "/components/IconSymbol.tsx",
   "/components/IconSymbol.ios.tsx",
   "/components/IconCircle.tsx",
+  "/app/+not-found.tsx",
 ];
 // Generic function to check if an element name contains "icon" (case-insensitive)
 const isIconElement = (elementName) => {
