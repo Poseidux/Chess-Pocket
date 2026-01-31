@@ -83,9 +83,9 @@ export default function PocketPuzzlesApp() {
       const report = validateAllPuzzles(BUILT_IN_PUZZLES);
       setValidationReport(report);
 
-      if (report.failedCount > 0) {
+      if (report.failedPuzzles.length > 0) {
         console.error(
-          `PocketPuzzlesApp: ${report.failedCount} puzzle(s) failed validation. Check Debug panel for details.`
+          `PocketPuzzlesApp: ${report.failedPuzzles.length} puzzle(s) failed validation. Check Debug panel for details.`
         );
       } else {
         console.log('PocketPuzzlesApp: All puzzles passed validation ✓');
@@ -103,7 +103,7 @@ export default function PocketPuzzlesApp() {
   const selectedPuzzle = useMemo(() => {
     if (!selectedPuzzleId) return null;
     return ContentStore.getPuzzleById(selectedPuzzleId);
-  }, [selectedPuzzleId]);
+  }, [filters]);
 
   // Initialize game state when puzzle is selected
   useEffect(() => {
@@ -176,7 +176,7 @@ export default function PocketPuzzlesApp() {
 
     console.log('PocketPuzzlesApp: Square pressed:', square);
 
-    const piece = getPieceAt(gameState.pieces, square);
+    const piece = getPieceAt(gameState.pieces, square[0], square[1]);
 
     // If no piece is selected
     if (!gameState.selectedSquare) {
@@ -203,7 +203,7 @@ export default function PocketPuzzlesApp() {
     }
 
     // If a piece is already selected
-    const selectedPiece = getPieceAt(gameState.pieces, gameState.selectedSquare);
+    const selectedPiece = getPieceAt(gameState.pieces, gameState.selectedSquare[0], gameState.selectedSquare[1]);
     if (!selectedPiece) return;
 
     // If clicking the same square, deselect
@@ -247,7 +247,7 @@ export default function PocketPuzzlesApp() {
     }
 
     // Check if pawn needs promotion
-    const movedPiece = getPieceAt(gameState.pieces, gameState.selectedSquare);
+    const movedPiece = getPieceAt(gameState.pieces, gameState.selectedSquare[0], gameState.selectedSquare[1]);
     if (movedPiece && movedPiece.type === 'P') {
       const promotionRank = movedPiece.color === 'w' ? selectedPuzzle.size - 1 : 0;
       if (square[1] === promotionRank) {
@@ -285,20 +285,11 @@ export default function PocketPuzzlesApp() {
       triggerHaptic('error');
       setTimeout(() => setErrorMessage(null), 1500);
 
-      // Reset on wrong move if specified
-      if (selectedPuzzle.resetOnWrong) {
-        console.log('PocketPuzzlesApp: Resetting puzzle due to wrong move');
-        setTimeout(() => {
-          incrementAttempts(selectedPuzzle.id);
-          initializeGameState(selectedPuzzle);
-        }, 1000);
-      } else {
-        setGameState({
-          ...gameState,
-          selectedSquare: null,
-          legalMoves: [],
-        });
-      }
+      setGameState({
+        ...gameState,
+        selectedSquare: null,
+        legalMoves: [],
+      });
       return;
     }
 
@@ -482,11 +473,11 @@ export default function PocketPuzzlesApp() {
 
   // Debug View
   if (viewState === 'debug' && validationReport) {
-    const passedText = `${validationReport.passedCount} passed`;
-    const failedText = `${validationReport.failedCount} failed`;
+    const passedText = `${validationReport.passedPuzzles} passed`;
+    const failedText = `${validationReport.failedPuzzles.length} failed`;
     const totalText = `${validationReport.totalPuzzles} total`;
-    const selfTestPassed = validationReport.selfTestResult.passed;
-    const selfTestMessage = validationReport.selfTestResult.message;
+    const selfTestPassed = validationReport.selfTest.passed;
+    const selfTestErrors = validationReport.selfTest.errors;
 
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
@@ -507,8 +498,13 @@ export default function PocketPuzzlesApp() {
           <View style={styles.debugCard}>
             <Text style={styles.debugTitle}>Self-Test Result</Text>
             <Text style={[styles.debugText, { color: selfTestPassed ? '#10b981' : '#ef4444' }]}>
-              {selfTestMessage}
+              {selfTestPassed ? '✓ All self-tests passed' : '✗ Self-tests failed'}
             </Text>
+            {selfTestErrors.map((error, index) => (
+              <Text key={index} style={[styles.debugText, { color: '#ef4444' }]}>
+                • {error}
+              </Text>
+            ))}
           </View>
 
           <View style={styles.debugCard}>
@@ -518,35 +514,39 @@ export default function PocketPuzzlesApp() {
             <Text style={[styles.debugText, { color: '#ef4444' }]}>{failedText}</Text>
           </View>
 
-          {validationReport.results
-            .filter(r => !r.passed)
-            .map(result => {
-              const failingMoveText = result.failingMoveIndex !== undefined
-                ? `Failing move index: ${result.failingMoveIndex}`
-                : '';
-              const legalMovesText = result.failingMoveLegalMoves
-                ? `Legal moves: ${JSON.stringify(result.failingMoveLegalMoves)}`
-                : '';
+          {validationReport.failedPuzzles.map(result => {
+            const failingMoveText = result.failingMoveIndex !== undefined
+              ? `Failing move index: ${result.failingMoveIndex}`
+              : '';
+            const fromToText = result.failingMoveFrom && result.failingMoveTo
+              ? `From: [${result.failingMoveFrom[0]}, ${result.failingMoveFrom[1]}] To: [${result.failingMoveTo[0]}, ${result.failingMoveTo[1]}]`
+              : '';
+            const legalMovesText = result.failingMoveLegalMoves
+              ? `Legal moves from that square: ${JSON.stringify(result.failingMoveLegalMoves)}`
+              : '';
 
-              return (
-                <View key={result.puzzleId} style={styles.errorCard}>
-                  <Text style={styles.errorTitle}>Puzzle: {result.puzzleId}</Text>
-                  {result.errors.map((error, index) => (
-                    <Text key={index} style={styles.errorText}>
-                      • {error}
-                    </Text>
-                  ))}
-                  {failingMoveText ? (
-                    <Text style={styles.errorDetailText}>{failingMoveText}</Text>
-                  ) : null}
-                  {legalMovesText ? (
-                    <Text style={styles.errorDetailText}>{legalMovesText}</Text>
-                  ) : null}
-                </View>
-              );
-            })}
+            return (
+              <View key={result.puzzleId} style={styles.errorCard}>
+                <Text style={styles.errorTitle}>Puzzle: {result.puzzleId}</Text>
+                {result.errors.map((error, index) => (
+                  <Text key={index} style={styles.errorText}>
+                    • {error}
+                  </Text>
+                ))}
+                {failingMoveText ? (
+                  <Text style={styles.errorDetailText}>{failingMoveText}</Text>
+                ) : null}
+                {fromToText ? (
+                  <Text style={styles.errorDetailText}>{fromToText}</Text>
+                ) : null}
+                {legalMovesText ? (
+                  <Text style={styles.errorDetailText}>{legalMovesText}</Text>
+                ) : null}
+              </View>
+            );
+          })}
 
-          {validationReport.failedCount === 0 && (
+          {validationReport.failedPuzzles.length === 0 && (
             <View style={styles.successCard}>
               <Text style={styles.successText}>✓ All puzzles passed validation!</Text>
             </View>
