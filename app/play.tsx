@@ -13,7 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ChessBoard } from '@/components/ChessBoard';
-import { ContentStore } from '@/data/ContentStore';
+import { BUILT_IN_PUZZLES } from '@/data/builtInPuzzles';
 import { Piece, PieceColor, LineMove } from '@/data/types';
 import { Square, generateLegalMoves, applyMove, isInCheck, isCheckmate } from '@/utils/chessLogic';
 import { useAppSettings } from '@/hooks/useAppSettings';
@@ -46,7 +46,7 @@ export default function PlayScreen() {
   const { getProgress, markSolved, incrementAttempts } = usePuzzleProgress();
 
   const puzzleId = params.id as string;
-  const puzzle = ContentStore.getPuzzleById(puzzleId);
+  const puzzle = BUILT_IN_PUZZLES.find(p => p.id === puzzleId);
 
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [selectedSquare, setSelectedSquare] = useState<Square | null>(null);

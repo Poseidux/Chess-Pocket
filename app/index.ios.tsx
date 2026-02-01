@@ -1,4 +1,7 @@
 
+import React from 'react';
 import PocketPuzzlesApp from './index';
 
-export default PocketPuzzlesApp;
+export default function PocketPuzzlesAppIOS() {
+  return <PocketPuzzlesApp />;
+}

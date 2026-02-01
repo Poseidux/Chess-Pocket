@@ -14,7 +14,7 @@ interface PieceIcon3DProps {
  * Uses gradient fills and subtle shadows for a 3D appearance
  * Consistent across iOS and Android
  */
-export function PieceIcon3D({ type, color, size }: PieceIcon3DProps) {
+export function PieceIcon({ type, color, size }: PieceIcon3DProps) {
   const isWhite = color === 'w';
   const iconSize = size * 0.75;
   const viewBox = '0 0 100 100';

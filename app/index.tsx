@@ -10,11 +10,10 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { ContentStore } from '@/data/ContentStore';
+import { BUILT_IN_PUZZLES } from '@/data/builtInPuzzles';
 import { PuzzleSize, Difficulty } from '@/data/types';
 import { useAppSettings } from '@/hooks/useAppSettings';
 import { usePuzzleProgress } from '@/hooks/usePuzzleProgress';
-import { DebugPanel } from '@/components/DebugPanel';
 import * as Haptics from 'expo-haptics';
 
 export default function PocketPuzzlesApp() {
@@ -25,7 +24,6 @@ export default function PocketPuzzlesApp() {
   
   const [sizeFilter, setSizeFilter] = useState<PuzzleSize[]>([]);
   const [difficultyFilter, setDifficultyFilter] = useState<Difficulty[]>([]);
-  const [showDebugPanel, setShowDebugPanel] = useState(false);
 
   const isDark = effectiveTheme === 'dark';
   const colors = {
@@ -52,33 +50,30 @@ export default function PocketPuzzlesApp() {
 
   const toggleSizeFilter = (size: PuzzleSize) => {
     console.log('Toggling size filter:', size);
-    if (sizeFilter.includes(size)) {
-      setSizeFilter(sizeFilter.filter(s => s !== size));
-    } else {
-      setSizeFilter([...sizeFilter, size]);
-    }
+    const newFilter = sizeFilter.includes(size)
+      ? sizeFilter.filter(s => s !== size)
+      : [...sizeFilter, size];
+    setSizeFilter(newFilter);
     triggerHaptic();
   };
 
   const toggleDifficultyFilter = (difficulty: Difficulty) => {
     console.log('Toggling difficulty filter:', difficulty);
-    if (difficultyFilter.includes(difficulty)) {
-      setDifficultyFilter(difficultyFilter.filter(d => d !== difficulty));
-    } else {
-      setDifficultyFilter([...difficultyFilter, difficulty]);
-    }
+    const newFilter = difficultyFilter.includes(difficulty)
+      ? difficultyFilter.filter(d => d !== difficulty)
+      : [...difficultyFilter, difficulty];
+    setDifficultyFilter(newFilter);
     triggerHaptic();
   };
 
-  const allPuzzles = ContentStore.getAllPuzzles();
-  const filteredPuzzles = allPuzzles.filter(puzzle => {
+  const filteredPuzzles = BUILT_IN_PUZZLES.filter(puzzle => {
     const sizeMatch = sizeFilter.length === 0 || sizeFilter.includes(puzzle.size);
     const difficultyMatch = difficultyFilter.length === 0 || difficultyFilter.includes(puzzle.difficulty);
     return sizeMatch && difficultyMatch;
   });
 
   const formatMateText = (depth: number): string => {
-    return `Mate in ${depth}`;
+    return `Checkmate in ${depth}`;
   };
 
   const puzzleCountText = `${filteredPuzzles.length} puzzle${filteredPuzzles.length !== 1 ? 's' : ''}`;
@@ -86,32 +81,18 @@ export default function PocketPuzzlesApp() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       <View style={styles.header}>
-        <View style={styles.headerTop}>
-          <View>
-            <Text style={[styles.headerTitle, { color: colors.text }]}>Pocket Puzzles</Text>
-            <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>
-              Offline chess mate puzzles
-            </Text>
-          </View>
-          {__DEV__ && (
-            <TouchableOpacity
-              style={[styles.debugButton, { backgroundColor: colors.card, borderColor: colors.border }]}
-              onPress={() => {
-                setShowDebugPanel(true);
-                triggerHaptic();
-              }}
-            >
-              <Text style={[styles.debugButtonText, { color: colors.text }]}>🔧</Text>
-            </TouchableOpacity>
-          )}
-        </View>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Pocket Puzzles</Text>
+        <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>
+          Find the winning moves
+        </Text>
       </View>
 
       <View style={[styles.filterSection, { borderBottomColor: colors.border }]}>
-        <Text style={[styles.filterLabel, { color: colors.textSecondary }]}>Size</Text>
+        <Text style={[styles.filterLabel, { color: colors.textSecondary }]}>Board Size</Text>
         <View style={styles.filterRow}>
           {([5, 6, 7, 8] as PuzzleSize[]).map(size => {
             const isActive = sizeFilter.includes(size);
+            const sizeText = `${size}×${size}`;
             return (
               <TouchableOpacity
                 key={size}
@@ -122,7 +103,7 @@ export default function PocketPuzzlesApp() {
                 onPress={() => toggleSizeFilter(size)}
               >
                 <Text style={[styles.filterChipText, { color: isActive ? '#ffffff' : colors.text }]}>
-                  {size}×{size}
+                  {sizeText}
                 </Text>
               </TouchableOpacity>
             );
@@ -135,6 +116,7 @@ export default function PocketPuzzlesApp() {
         <View style={styles.filterRow}>
           {([1, 2, 3, 4, 5] as Difficulty[]).map(difficulty => {
             const isActive = difficultyFilter.includes(difficulty);
+            const difficultyText = `${difficulty}`;
             return (
               <TouchableOpacity
                 key={difficulty}
@@ -145,7 +127,7 @@ export default function PocketPuzzlesApp() {
                 onPress={() => toggleDifficultyFilter(difficulty)}
               >
                 <Text style={[styles.filterChipText, { color: isActive ? '#ffffff' : colors.text }]}>
-                  {difficulty}
+                  {difficultyText}
                 </Text>
               </TouchableOpacity>
             );
@@ -162,6 +144,8 @@ export default function PocketPuzzlesApp() {
           const mateText = formatMateText(puzzle.objective.depth);
           const progress = getProgress(puzzle.id);
           const solved = progress.solved;
+          const sizeText = `${puzzle.size}×${puzzle.size}`;
+          const difficultyText = `Difficulty ${puzzle.difficulty}`;
 
           return (
             <TouchableOpacity
@@ -184,11 +168,11 @@ export default function PocketPuzzlesApp() {
               <View style={styles.puzzleCardFooter}>
                 <View style={styles.puzzleMetaRow}>
                   <Text style={[styles.puzzleMeta, { color: colors.textSecondary }]}>
-                    {puzzle.size}×{puzzle.size}
+                    {sizeText}
                   </Text>
                   <Text style={[styles.puzzleMeta, { color: colors.textSecondary }]}>•</Text>
                   <Text style={[styles.puzzleMeta, { color: colors.textSecondary }]}>
-                    Difficulty {puzzle.difficulty}
+                    {difficultyText}
                   </Text>
                 </View>
                 <Text style={[styles.puzzleObjective, { color: colors.primary }]}>{mateText}</Text>
@@ -214,8 +198,6 @@ export default function PocketPuzzlesApp() {
           </View>
         )}
       </ScrollView>
-
-      <DebugPanel visible={showDebugPanel} onClose={() => setShowDebugPanel(false)} />
     </SafeAreaView>
   );
 }
@@ -228,11 +210,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 24,
   },
-  headerTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
   headerTitle: {
     fontSize: 32,
     fontWeight: '800',
@@ -240,17 +217,6 @@ const styles = StyleSheet.create({
   },
   headerSubtitle: {
     fontSize: 16,
-  },
-  debugButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-  },
-  debugButtonText: {
-    fontSize: 20,
   },
   filterSection: {
     paddingHorizontal: 20,
